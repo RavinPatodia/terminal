@@ -1,0 +1,183 @@
+//created on: 2015-3-25
+package com.langmy.terminal.modules.ruleEngine
+
+import com.langmy.terminal.modules.ruleEngine.fact.DctRecModel
+import com.langmy.terminal.modules.ruleEngine.fact.ChargeResult
+import com.langmy.terminal.modules.ruleEngine.fact.UserModel
+import com.langmy.terminal.common.utils.DateUtils
+import com.langmy.terminal.modules.ruleEngine.dctRule.DctRuleGroupModel
+import com.langmy.terminal.modules.ruleEngine.dctRule.DctRuleModel
+import com.langmy.terminal.common.utils.ListUtils
+import com.langmy.terminal.common.utils.FestivalUtils
+
+import com.langmy.terminal.modules.ruleEngine.service.RuleEngineService
+
+
+//优惠规则初始化
+rule "initDctRule"
+	salience 20
+	when
+		$userInfo:UserModel()
+		$re: ChargeResult()
+		$dctGroup:DctRuleGroupModel()
+	then
+		System.out.println("优惠规则组启用，开始执行相应的优惠规则");
+		$re.setDctRuleGroupModel($dctGroup);
+		java.util.List<DctRuleModel> dctRules = $dctGroup.getDctRuleModels();//获得优惠规则组中的优惠规则列表
+		if(ListUtils.isNullOrEmpty(dctRules)){
+			System.out.println("优惠规则组中无规则");
+			return;
+		}
+		$re.setDctResult($re.getAmoutPay());
+		drools.getKnowledgeRuntime().getAgenda().getAgendaGroup( "dctRule").setFocus();
+		
+end
+
+//生日打折
+rule "birthDay"
+	salience 2
+	agenda-group "dctRule"
+	lock-on-active true
+    when
+        $userInfo :  UserModel(birthDay!=null)
+        $dctGroup:DctRuleGroupModel()
+        dctRule:DctRuleModel(type==DctRuleModel.DCT_TYPE_BIRTH) from $dctGroup.getDctRuleModels()
+    	eval(DateUtils.formatDate($userInfo.getBirthDay(),"MMdd").equals(DateUtils.getDate("MMdd")))//判断是否是生日
+        $re: ChargeResult()
+    then
+    	System.out.println("——————生日优惠打折———————");
+    	System.out.println("规则名称"+dctRule.getDctName());
+        double dctResult = $re.getDctResult();
+        System.out.println("原价"+dctResult);
+        dctResult = dctResult*dctRule.getDctPer();
+        System.out.println("打折后价格"+dctResult);
+        double dctPay = $re.getAmoutPay() - dctResult;
+        $re.setDctResult(dctResult);
+       	$re.setDctPay(dctPay);
+       	System.out.println("——————生日优惠打折结束———————");
+       	//DctRecModel dctRec = new DctRecModel(1.1,"【用户生日优惠】优惠策略是使用");
+end
+
+//节假日打折
+rule "holiday"
+	salience 2
+	agenda-group "dctRule"
+	lock-on-active true
+    when
+        $userInfo :  UserModel()
+        $dctGroup:DctRuleGroupModel()
+        dctRule:DctRuleModel(type==DctRuleModel.DCT_TYPE_HOLIDAY) from $dctGroup.getDctRuleModels()
+        $re: ChargeResult()
+        eval( FestivalUtils.isFestivalToDay())//判断是否是节假日
+    then
+    	System.out.println("——————节假日打折———————");
+    	System.out.println("规则名称"+dctRule.getDctName());
+    	 double dctResult = $re.getDctResult();
+        System.out.println("原价"+dctResult);
+        dctResult = dctResult*dctRule.getDctPer();
+        System.out.println("打折后价格"+dctResult);
+        double dctPay = $re.getAmoutPay() - dctResult;
+        $re.setDctResult(dctResult);
+       	$re.setDctPay(dctPay);
+       	System.out.println("——————节假日打折结束———————");
+end
+
+//双休日_周六
+rule "weekend_saturday"
+	salience 2
+	agenda-group "dctRule"
+	lock-on-active true
+    when
+        $userInfo :  UserModel()
+        $dctGroup:DctRuleGroupModel()
+        //判断是否是双休日的周六
+        dctRule:DctRuleModel(type==DctRuleModel.DCT_TYPE_WEEKEND,(weekendType==DctRuleModel.WEEKEND_TYPE_SAT||weekendType==DctRuleModel.WEEKEND_TYPE_BOTH)) from $dctGroup.getDctRuleModels()
+        $re: ChargeResult()
+        eval( FestivalUtils.isSaturday() )
+    then
+    	System.out.println("——————双休日打折———————");
+    	System.out.println("规则名称"+dctRule.getDctName());
+        double dctResult = $re.getDctResult();
+        System.out.println("原价"+dctResult);
+        dctResult = dctResult*dctRule.getDctPer();
+        System.out.println("打折后价格"+dctResult);
+        double dctPay = $re.getAmoutPay() - dctResult;
+        $re.setDctResult(dctResult);
+       	$re.setDctPay(dctPay);
+       	System.out.println("——————双休日打折结束———————");
+end
+
+//双休日_周日
+rule "weekend_sunday"
+	salience 2
+	agenda-group "dctRule"
+	lock-on-active true
+    when
+        $userInfo :  UserModel()
+        $dctGroup:DctRuleGroupModel()
+         $re: ChargeResult()
+        dctRule:DctRuleModel(type==DctRuleModel.DCT_TYPE_WEEKEND,(weekendType==DctRuleModel.WEEKEND_TYPE_SUN||weekendType==DctRuleModel.WEEKEND_TYPE_BOTH)) from $dctGroup.getDctRuleModels()
+  		eval(FestivalUtils.isSunDay())
+	then
+    	System.out.println("——————双休日打折———————");
+    	System.out.println("规则名称"+dctRule.getDctName());
+        double dctResult = $re.getDctResult();
+        System.out.println("原价"+dctResult);
+        dctResult = dctResult*dctRule.getDctPer();;
+        System.out.println("打折后价格"+dctResult);
+        double dctPay = $re.getAmoutPay() - dctResult;
+        $re.setDctResult(dctResult);
+       	$re.setDctPay(dctPay);
+       	System.out.println("——————双休日打折结束———————");
+end
+
+//规则时间段
+rule "time_dctRule"
+	salience 2
+	agenda-group "dctRule"
+	lock-on-active true
+    when
+        $userInfo :  UserModel()
+        $dctGroup:DctRuleGroupModel()
+         $re: ChargeResult()
+        dctRule:DctRuleModel(type==DctRuleModel.DCT_TYPE_TIME) from $dctGroup.getDctRuleModels()
+        eval(DateUtils.isNowWithinTwoTime(dctRule.getBeginTime(),dctRule.getEndTime()))
+	then
+		$re.setTimeDctRuleExecuteFlag(true);
+    	System.out.println("——————规定时间段打折———————");
+    	System.out.println("规则名称"+dctRule.getDctName());
+         double dctResult = $re.getDctResult();
+        System.out.println("原价"+dctResult);
+        dctResult = dctResult*dctRule.getDctPer();;
+        System.out.println("打折后价格"+dctResult);
+        double dctPay = $re.getAmoutPay() - dctResult;
+        $re.setDctResult(dctResult);
+       	$re.setDctPay(dctPay);
+       	System.out.println("——————规定时间段打折结束———————");
+end
+
+//规定日期段
+rule "date_dctRule"
+	salience 2
+	agenda-group "dctRule"
+	lock-on-active true
+    when
+        $userInfo :  UserModel()
+        $dctGroup:DctRuleGroupModel()
+        dctRule:DctRuleModel(type==DctRuleModel.DCT_TYPE_DATE) from $dctGroup.getDctRuleModels()
+        //判断是否是规则时间段
+        $re: ChargeResult()
+        eval(DateUtils.isTodayBetweenTwoDay(dctRule.getBeginDate(),dctRule.getEndDate()))
+    then
+		$re.setDateDctRuleExecuteFlag(true);
+    	System.out.println("——————规定日期段打折———————");
+    	System.out.println("规则名称"+dctRule.getDctName());
+         double dctResult = $re.getDctResult();
+        System.out.println("原价"+dctResult);
+        dctResult = dctResult*dctRule.getDctPer();
+        System.out.println("打折后价格"+dctResult);
+        double dctPay = $re.getAmoutPay() - dctResult;
+        $re.setDctResult(dctResult);
+       	$re.setDctPay(dctPay);
+       	System.out.println("——————规定日期段打折结束———————");
+end

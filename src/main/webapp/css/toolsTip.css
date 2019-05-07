@@ -1,0 +1,32 @@
+@CHARSET "UTF-8";
+
+.tooltips {
+	border-width: 1px;
+	border-style: solid;
+	border-color: #FFFFFF;
+	font-size: 0.1px  !important;
+	color: #FFFFFF;
+	position: absolute;
+	display: none;
+	opacity: 0;
+	height: 19px;
+	background-color: #005AB5;
+	filter: alpha(opacity = 0);
+	z-index: 999;
+}
+
+.tooltips p.content {
+	padding: 1px;
+}
+
+.tooltips .triangle-front, .tooltips .triangle-back {
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	border-width: 8px;
+	border-style: solid;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+	position: absolute;
+	border-color: transparent;
+	margin-left:10px;
+	left: 50%;
+}

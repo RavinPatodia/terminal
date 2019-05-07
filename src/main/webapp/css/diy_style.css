@@ -1,0 +1,387 @@
+body {
+	font-family: 'Microsoft Yahei' !important;
+}
+
+.h-validator {
+	margin-bottom: 0;
+	margin-top: 5px;
+	color: #a94442;
+}
+
+.padding0 {
+	padding: 0px;
+}
+
+.leftTextLabel {
+	text-align: left;
+	padding-top: 7px;
+	margin-bottom: 0;
+	margin-top: 1px;
+	margin-left: 2px;
+}
+
+.showTextLable{
+	padding-left: 0px;
+	padding-right: 0px;
+	padding-top: 7px;
+	margin-bottom: 0;
+	margin-top: 1px;
+}
+
+.marginLeftDiv{
+	margin-right:12px
+}
+
+
+.bd {
+	border: 1px solid #e8e8e8;
+}
+
+.left_pt, .right_pt {
+	padding: 0px;
+	height: 180px;
+	overflow-y: scroll;
+	min-height: 150px;
+}
+
+.left_pt>span, .right_pt>span {
+	display: block;
+	border-bottom: 1px solid #e8e8e8;
+	cursor: pointer;
+	padding: 5px 10px;
+}
+
+.left_pt>span:hover, .right_pt>span:hover, .right_pt>span.active {
+	background-color: #e8e8e8;
+	transition: all 0.5s;
+}
+
+.operation_pt>a {
+	margin: 2px 5px;
+}
+
+.error_log {
+	display: none;
+}
+.video_control_panel{
+			width: 100%;
+			overflow: hidden;
+}
+
+.v_nav{
+	width: 200px;
+	float:left;
+	border:1px solid #2b3643;
+	
+}
+
+.v_nav > .search_box{
+	background-color: #2b3643;
+}
+
+.v_nav_body{
+	border: 2px solid #2b3643;
+	height: 560px;
+	overflow-y:scroll;
+	overflow-x:hidden;
+}
+
+.v_nav_body > ul{
+	list-style: none;
+	padding:0px;
+	padding-left: 10px;
+}
+
+.v_nav_body > ul > li{
+	color:#999;
+	display: block;
+	padding:5px;
+}
+
+.v_main_pl{
+	margin-left: 205px;
+	height: 600px;
+	border:1px solid #2b3643;
+}
+
+
+.v_main_control{
+	clear: both;
+	width: 100%;
+	border:1px solid #2b3643;
+	margin-top: 5px;
+}
+.v_main_control > .v_ctrl_head{
+	background-color: #2b3643;
+	height: 30px;
+	line-height: 30px;
+}
+
+.v_main_control > .v_ctrl_head > a{
+	color:#fff;
+	font-size: 12px;
+	text-align: center;
+	display: inline-block;
+	box-sizing:border-box;
+	text-decoration: none;
+	width:24.6%;
+	border-right:1px solid #fff;
+}
+
+.v_main_control > .v_ctrl_body{
+	height: 220px;
+	background-color: #fff;
+	overflow: hidden;
+}
+
+.v_main_control > .v_ctrl_body > .v_form {
+	width: 25%;
+	float: left;
+}
+
+.v_main_control > .v_ctrl_body > .v_form  div{
+	margin:2px 0px 0px 0px;
+}
+
+.v_main_control > .v_ctrl_body > .v_progress{
+	margin-left: 25%;
+	position: relative;
+	height: 300px;
+}
+
+.v_prs_idt{
+	height: 263px;
+	display: block;
+	background-color: #2b3643;
+	width: 5px;
+	position: absolute;
+	top:0px;
+	left:5px;
+}
+
+.btm_footer{
+	height: 40px;
+	line-height: 40px;
+	color:#fff;
+	text-align: center;
+	background-color: #2b3643;
+}
+
+.diy_form_sm{
+	height: 20px;
+	line-height: 20px;
+}
+
+.dataTables_wrapper > .row:first-child{
+	position: absolute;
+	right: 0px;
+	top: 5px;
+	width: 203px;
+	margin-top: 6px;
+}
+
+.dataTables_wrapper > .row:first-child > .col-md-6{
+	width:auto;
+}
+
+.dataTables_wrapper > .row:first-child > .col-md-6 select{
+	height: 28px;
+	line-height: 28px;
+	padding: 2px 10px;
+}
+
+.bootstrap-select > .btn{
+	line-height: 14px;
+}
+
+.bootstrap-select > .btn > .caret{
+	top:60% !important;
+}
+.control_label_middle .control-label{
+	padding-top: 3px;
+}
+.btn-query{
+	background-color:rgb(68,183,175);
+	color:#fff;
+}/*查询按钮的颜色*/
+.btn-clear{
+	background-color:rgb(149,165,166);
+	color:#fff;
+}/*检索清空按钮的颜色*/
+
+.custom-header{
+  text-align: center;
+  padding: 3px;
+  background: #000;
+  color: #fff;
+}
+
+/*monitor页面开始*/
+.monitor_control_panel{
+	width: 100%;
+	overflow: hidden;
+}
+
+.m_nav{
+	width: 35%;
+	height: 807px;
+	float: right;
+	border:1px solid #2b3643;
+	overflow:hidden; 
+}
+
+.m_main_pl{
+	width: 50%;
+	height: 500px;
+	float: left; 
+	border:1px solid #2b3643;
+	border-right: 0px; 
+	overflow: hidden;
+}
+
+.m_nav_center{
+	width: 15%;
+	height: 500px;
+	float: left;
+	border:1px solid #2b3643;
+	border-right: 0px;
+}
+
+.m_nav > ul{
+	margin-bottom: 2px;
+}
+
+.m_video{
+	width: 100%;
+	height: 460px;
+}
+
+.m_footer{
+	width: 100%;
+	height: 40px;
+	line-height: 35px;
+	color:#fff;
+	background-color: #2b3643;
+}
+
+.text_left{
+	width: 50%;
+	height: 100%;
+	float: left; 
+	border-right: 1px solid #2b3643;
+}
+
+.btn-left{
+	float: left;
+	margin-left: 10px;
+}
+
+.btn-right{
+	float: right;
+	margin-right: 10px;
+}
+
+.text_right{
+	width: 50%;
+	height: 100%;
+	float: right; 
+}
+.text_box{
+    height: 23px;
+	color:#fff;
+	background-color: #2b3643;
+}
+.text_box > a{
+	float: right;
+	height: 23px;
+	font-size: 14px;
+	padding-top: 2px;
+
+}
+
+.text_box > label{
+	font-size: 12px;
+	margin-top: 3px;
+	margin-left: 3px;
+}
+
+.pic_box{
+	text-align:center;
+	height:182px;
+}
+
+.input_style{
+	margin-top: 3px;
+}
+.input_style > input{
+	width: 135px;
+	margin-right:5px;
+	float: right;
+}
+
+.input_style > label{
+	margin: 5px;
+	font-size: 12px;
+}
+
+.m_main_left{
+	float: left;
+	width: 65%; 
+}
+
+.m_main_left > th{
+	width: 700px;
+}
+
+.e_o_btn_left{
+	margin-top: 35px;
+	overflow: hidden;
+}
+
+.e_o_btn_right{
+	margin-top: 20px;
+	overflow: hidden;
+}
+
+.e_o_btn_left > a{
+	margin-bottom: 14px;
+	margin-right: 40px;
+	float: right;
+	width: 150px;
+	font-size: 20px;
+}
+
+.e_o_btn_right > a{
+	margin-bottom: 9px;
+	margin-right: 40px;
+	float: right;
+	width: 150px;
+	font-size: 20px;
+}
+
+.btn-right > input{
+	margin-top:10px;
+	width: 155px;
+	height:25px;
+}
+
+.m_nav_left,.m_nav_right{
+	overflow: scroll;
+	overflow-x: hidden;
+	height: 260px;
+}
+
+.m_nav_center_text{
+	margin: 8px 10px;
+}
+
+.m_nav_center_text > label{
+	font-size: 12px;
+	margin-top: 5px;
+}
+
+.m_nav_center_text > input{
+	width: 60%;
+	float: right;
+}
+/*monitor页面结束*/

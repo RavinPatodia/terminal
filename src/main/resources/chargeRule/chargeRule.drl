@@ -1,0 +1,406 @@
+//created on: 2015-3-25
+package com.langmy.terminal.modules.ruleEngine
+
+import com.langmy.terminal.modules.ruleEngine.fact.ChargeResult
+import com.langmy.terminal.modules.ruleEngine.fact.UserModel
+import com.langmy.terminal.modules.ruleEngine.chargeRule.TimeRuleModel
+import com.langmy.terminal.modules.ruleEngine.chargeRule.MeterRuleModel
+import com.langmy.terminal.modules.ruleEngine.fact.AdmissionRecModel
+import com.langmy.terminal.modules.ruleEngine.chargeRule.Rule;
+import com.langmy.terminal.modules.ruleEngine.dctRule.DctRuleGroupModel
+import com.langmy.terminal.modules.ruleEngine.service.RuleEngineService
+
+import com.langmy.terminal.common.utils.TimeUtils
+import com.langmy.terminal.common.utils.ListUtils
+
+
+rule "init"
+	salience 99
+	auto-focus 
+	agenda-group "user_chargeRule"
+	when
+		eval( true )
+	then
+		RuleEngineService.logger.info("---------------ruleEngine Start---------------");
+
+end
+
+//用户免费时间未过
+rule "user_freeCharge"
+	salience 99
+	agenda-group "user_chargeRule"
+	when
+		$re:ChargeResult()
+		$adminssionRec:AdmissionRecModel()
+		$rule:Rule(freeTime>= TimeUtils.getDistanceMin($adminssionRec.inTime, $adminssionRec.outTime))//通过Util判断是否在免费时间内
+	then
+		RuleEngineService.logger.info("-----------------within free time----------------");
+
+end
+
+//用户已付款,判断是否超时长了
+rule "user_timeOutCharge"
+	salience 98
+	agenda-group "user_chargeRule"
+	when
+		$userInfo:UserModel()
+		$re:ChargeResult()
+		$adminssionRec:AdmissionRecModel(payFlag==true)
+		$rule:TimeRuleModel()
+	then 
+		int stayTime = getDistanceMin($adminssionRec.getPayTime(),$adminssionRec.getOutTime());
+		if(stayTime<=$rule.getTimeout()){
+			RuleEngineService.logger.info(" After the payment,the parking time less than the prescribed time,it doesn't needs extra fee");
+			return;
+		}
+		RuleEngineService.logger.info("After the payment,the parking time more than the prescribed time,it needs extra fee");
+		//当发现入场超时长后，执行入场超时长的收费规则，这里将焦点定到"timeOut_chargeRule"是指这个组内的规则开始执行
+		drools.getKnowledgeRuntime().getAgenda().getAgendaGroup( "timeOut_chargeRule").setFocus();
+end
+
+
+//【出场超时长】小车计时收费——标准模式
+rule "timeOut_carTimeCharge_standard"
+	salience 80
+	agenda-group "timeOut_chargeRule"
+    when
+        $re:ChargeResult()
+        $adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_CAR)
+        chargeRule:TimeRuleModel(billingModel==TimeRuleModel.BILLING_MODEL_STANDARD)
+        $dctGroup:DctRuleGroupModel()
+        $userInfo:UserModel()
+    then
+    	RuleEngineService.logger.info("----------------【out of time】car time charing  start of standard mode----------------");
+    	double chargeCost = countStandardCarTimeCharge($adminssionRec.getPayTime(),$adminssionRec.getOutTime(),chargeRule,$dctGroup,$userInfo);
+    	$re.setAmoutPay($re.getAmoutPay()+chargeCost);
+    	RuleEngineService.logger.info("----------------【out of time】car time charing  end of standard mode----------------");
+end
+
+//【出场超时长】大车计时收费——标准模式
+rule "timeOut_truckTimeCharge_standard"
+	salience 80
+	agenda-group "timeOut_chargeRule"
+    when
+        $re:ChargeResult()
+        $adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_TRUCK)
+        chargeRule:TimeRuleModel(billingModel==TimeRuleModel.BILLING_MODEL_STANDARD)
+        $dctGroup:DctRuleGroupModel()
+        $userInfo:UserModel()
+    then
+    	RuleEngineService.logger.info("----------------【out of time】trunk time charing  start of standard mode----------------");
+    	//计算标准模式的计时收费
+    	double chargeCost = countStandardTruckTimeCharge($adminssionRec.getPayTime(),$adminssionRec.getOutTime(),chargeRule,$dctGroup,$userInfo);
+    	$re.setAmoutPay($re.getAmoutPay()+chargeCost);
+    	RuleEngineService.logger.info("----------------【out of time】trunk time charing  end of standard mode----------------");
+end
+
+//【出场超时长】小车计时收费——时段模式
+rule "timeOut_carTimeCharge_period"
+	salience 80
+	agenda-group "timeOut_chargeRule"
+    when
+        $re:ChargeResult()
+        $adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_CAR)
+        chargeRule:TimeRuleModel(billingModel==TimeRuleModel.BILLING_MODEL_PERIOD)
+        $dctGroup:DctRuleGroupModel()
+        $userInfo:UserModel()
+    then
+    	RuleEngineService.logger.info("----------------【out of time】car time charing  start of time mode----------------");
+    	//计算小车时段模式的计时收费
+    	double chargeCost = countPeriodCarTimeCharge($adminssionRec.getPayTime(),$adminssionRec.getOutTime(),chargeRule,$dctGroup,$userInfo);
+    	$re.setAmoutPay($re.getAmoutPay()+chargeCost);
+    	RuleEngineService.logger.info("----------------【out of time】car time charing  end of time mode----------------");
+end
+
+//【出场超时长】大车计时收费——时段模式
+rule "timeOut_truckTimeCharge_period"
+	salience 80
+	agenda-group "timeOut_chargeRule"
+    when
+        $re:ChargeResult()
+        $adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_TRUCK)
+        chargeRule:TimeRuleModel(billingModel==TimeRuleModel.BILLING_MODEL_PERIOD)
+        $dctGroup:DctRuleGroupModel()
+        $userInfo:UserModel()
+    then
+    	RuleEngineService.logger.info("----------------【out of time】trunk time charing  start of time mode----------------");
+    	//计算大车时段模式的昼夜收费
+    	double chargeCost = countPeriodTruckTimeCharge($adminssionRec.getPayTime(),$adminssionRec.getOutTime(),chargeRule,$dctGroup,$userInfo);
+    	$re.setAmoutPay($re.getAmoutPay()+chargeCost);
+    	RuleEngineService.logger.info("----------------【out of time】trunk time charing  end of time mode----------------");
+end
+
+//【出场超时长】小车计时收费——昼夜模式一
+rule "timeOut_carTimecharge_day_night1"
+	salience 80
+	agenda-group "timeOut_chargeRule"
+    when
+        $re:ChargeResult()
+        $adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_CAR)
+        chargeRule:TimeRuleModel(billingModel==TimeRuleModel.BILLING_MODEL_DAY_NIGHT)
+        $dctGroup:DctRuleGroupModel()
+        $userInfo:UserModel()
+    then
+    	RuleEngineService.logger.info("----------------【out of time】car time charing  start of day and night  mode one----------------");
+    	//计算小车昼夜模式一的计时收费
+    	double chargeCost = countDayNightOneCarTimeCharge($adminssionRec.getPayTime(),$adminssionRec.getOutTime(),chargeRule,$dctGroup,$userInfo);
+    	$re.setAmoutPay($re.getAmoutPay()+chargeCost);
+    	RuleEngineService.logger.info("-----------------------------【out of time】car time charing  end of day and night  mode one----------------");
+end
+
+//【出场超时长】大车计时收费— 昼夜模式一
+rule "timeOut_truckTimecharge_day_night1"
+	salience 80
+	agenda-group "timeOut_chargeRule"
+    when
+        $re:ChargeResult()
+        $adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_TRUCK)
+        chargeRule:TimeRuleModel(billingModel==TimeRuleModel.BILLING_MODEL_DAY_NIGHT)
+        $dctGroup:DctRuleGroupModel()
+        $userInfo:UserModel()
+    then
+    	RuleEngineService.logger.info("----------------【out of time】trunk time charing start of day and night  mode one----------------");
+    	//计算大车昼夜模式一的计时收费
+    	double chargeCost = countDayNightOneTruckTimeCharge($adminssionRec.getPayTime(),$adminssionRec.getOutTime(),chargeRule,$dctGroup,$userInfo);
+    	$re.setAmoutPay($re.getAmoutPay()+chargeCost);
+    	RuleEngineService.logger.info("----------------【out of time】trunk time charing ed of day and night  mode one----------------");
+end
+
+//【出场超时长】小车计时收费— 昼夜模式二
+rule "timeOut_carTimecharge_day_night2"
+	salience 80
+	agenda-group "timeOut_chargeRule"
+    when
+        $re:ChargeResult()
+        $adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_CAR)
+        chargeRule:TimeRuleModel(billingModel==TimeRuleModel.BILLING_MODEL_DAY_NIGHT2)
+        $dctGroup:DctRuleGroupModel()
+        $userInfo:UserModel()
+    then
+    	RuleEngineService.logger.info("----------------【out of time】car time charing  start of day and night  mode two----------------");
+    	//计算小车 北京昼夜不分开计时收费
+    	double chargeCost = countDayNightOneCarTimeCharge($adminssionRec.getPayTime(),$adminssionRec.getOutTime(),chargeRule,$dctGroup,$userInfo);
+    	$re.setAmoutPay($re.getAmoutPay()+chargeCost);
+    	RuleEngineService.logger.info("----------------【out of time】car time charing  start of day and night  mode two----------------");
+end
+
+//【出场超时长】大车计时收费——昼夜模式二
+rule "timeOut_truckTimecharge_day_night2"
+	salience 80
+	agenda-group "timeOut_chargeRule"
+    when
+        $re:ChargeResult()
+        $adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_TRUCK)
+        chargeRule:TimeRuleModel(billingModel==TimeRuleModel.BILLING_MODEL_DAY_NIGHT2)
+        $dctGroup:DctRuleGroupModel()
+        $userInfo:UserModel()
+    then
+    	RuleEngineService.logger.info("----------------【out of time】trunk time charing  start of day and night  mode two----------------");
+    	//计算大车北京昼夜不分开计时收费
+    	double chargeCost = countDayNightOneTruckTimeCharge($adminssionRec.getPayTime(),$adminssionRec.getOutTime(),chargeRule,$dctGroup,$userInfo);
+    	$re.setAmoutPay($re.getAmoutPay()+chargeCost);
+    	RuleEngineService.logger.info("----------------【out of time】trunk time charing  end of day and night  mode two----------------");
+end
+
+
+
+//用户是计次收费，小车计次收费
+rule "user_carMeterCharge"
+	salience 98
+	agenda-group "user_chargeRule"
+	when
+		$userInfo:UserModel()
+		$re:ChargeResult()
+		$adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_CAR,payFlag==false)
+		$rule:MeterRuleModel(freeTime< TimeUtils.getDistanceMin($adminssionRec.getInTime(), $adminssionRec.getOutTime()))
+		$dctGroup:DctRuleGroupModel()
+	then
+		//RuleEngineService.logger.info("$adminssionRec.inTime"+$adminssionRec.getInTime());
+		//RuleEngineService.logger.info("$adminssionRec.outTime"+$adminssionRec.getOutTime());
+		//RuleEngineService.logger.info("freeTime "+freeTime);
+		RuleEngineService.logger.info("----------------car number mode start----------------");
+    	$re.setAmoutPay($rule.getCarMetering());
+    	RuleEngineService.logger.info("the fee of car charge:"+$rule.getCarMetering());
+    	RuleEngineService.logger.info("----------------car number mode end----------------");
+end
+
+//用户是计次收费，大车计次收费
+rule "user_truckMeterCharge"
+	salience 98
+	agenda-group "user_chargeRule"
+	when
+		$re:ChargeResult()
+		$adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_TRUCK,payFlag==false)
+		$rule:MeterRuleModel(freeTime< TimeUtils.getDistanceMin($adminssionRec.inTime, $adminssionRec.outTime))
+		$dctGroup:DctRuleGroupModel()
+	then
+		RuleEngineService.logger.info("----------------trunk number mode start----------------");
+    	$re.setAmoutPay($rule.getTruckMetering());
+    	RuleEngineService.logger.info("the fee of trunk charge:"+$rule.getTruckMetering());
+    	RuleEngineService.logger.info("----------------trunk number mode end----------------");
+end
+
+//用户是小车收费——标准
+rule "user_carTimeCharge_standard"
+	salience 98
+	agenda-group "user_chargeRule"
+	when
+		$re:ChargeResult()
+		$adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_CAR,payFlag==false)
+		$rule:TimeRuleModel(freeTime< TimeUtils.getDistanceMin($adminssionRec.inTime, $adminssionRec.outTime),billingModel==TimeRuleModel.BILLING_MODEL_STANDARD)
+		$dctGroup:DctRuleGroupModel()
+		$userInfo:UserModel()
+	then
+		//$userInfo.getBirthDay()		 
+		RuleEngineService.logger.info("----------------there is no any other car parking record_start of standard mode----------------");
+		$adminssionRec.setInTime(handleFreeTime($adminssionRec.getInTime(),$rule.isFreeTimeFlag(),$rule.getFreeTime()));		
+		double chargeCost = countStandardCarTimeCharge($adminssionRec.getInTime(),$adminssionRec.getOutTime(),$rule,$dctGroup,$userInfo);
+    	$re.setAmoutPay(chargeCost);
+    	RuleEngineService.logger.info("total fee:"+chargeCost);
+		RuleEngineService.logger.info("----------------end of car standard mode----------------");
+
+end
+
+//用户是大车计时收费——标准
+rule "user_truckTimeCharge_standard"
+	salience 98
+	agenda-group "user_chargeRule"
+	when
+		$re:ChargeResult()
+		$adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_TRUCK,payFlag==false)
+		//类型是标准模式，并且已经过了免费时间
+		$rule:TimeRuleModel(freeTime< TimeUtils.getDistanceMin($adminssionRec.inTime, $adminssionRec.outTime),billingModel==TimeRuleModel.BILLING_MODEL_STANDARD)
+		$dctGroup:DctRuleGroupModel()
+		$userInfo:UserModel()
+	then
+		$dctGroup.getDctRuleModels();
+		RuleEngineService.logger.info("there is no any other trunk parking record_start of standard mode");
+		$adminssionRec.setInTime(handleFreeTime($adminssionRec.getInTime(),$rule.isFreeTimeFlag(),$rule.getFreeTime()));
+		double chargeCost = countStandardTruckTimeCharge($adminssionRec.getInTime(),$adminssionRec.getOutTime(),$rule,$dctGroup,$userInfo);
+    	$re.setAmoutPay(chargeCost);
+    	RuleEngineService.logger.info("total fee:"+chargeCost);
+		RuleEngineService.logger.info("end of trunk standard mode");
+end
+
+//用户是小车计时收费——时段模式
+rule "user_carTimeCharge_period"
+	salience 98
+	agenda-group "user_chargeRule"
+	when
+		$re:ChargeResult()
+		$adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_CAR,payFlag==false)
+		//类型是时段模式，且过了免费时间
+		$rule:TimeRuleModel(freeTime< TimeUtils.getDistanceMin($adminssionRec.inTime, $adminssionRec.outTime),billingModel==TimeRuleModel.BILLING_MODEL_PERIOD)
+		$dctGroup:DctRuleGroupModel()
+		$userInfo:UserModel()
+	then 
+		RuleEngineService.logger.info("there is no any other car parking record_start of time mode");
+		$adminssionRec.setInTime(handleFreeTime($adminssionRec.getInTime(),$rule.isFreeTimeFlag(),$rule.getFreeTime()));
+		double chargeCost = countPeriodCarTimeCharge($adminssionRec.getInTime(),$adminssionRec.getOutTime(),$rule,$dctGroup,$userInfo);
+    	$re.setAmoutPay(chargeCost);
+    	RuleEngineService.logger.info("total fee:"+chargeCost);
+		RuleEngineService.logger.info("end of car time mode");
+
+end
+
+//用户是大车计时收费——时段模式
+rule "user_truckTimeCharge_period"
+	salience 98
+	agenda-group "user_chargeRule"
+	when
+		$re:ChargeResult()
+		$adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_TRUCK,payFlag==false)
+		//类型是时段模式，且过了免费时间
+		$rule:TimeRuleModel(freeTime< TimeUtils.getDistanceMin($adminssionRec.inTime, $adminssionRec.outTime),billingModel==TimeRuleModel.BILLING_MODEL_PERIOD)
+		$dctGroup:DctRuleGroupModel()
+		$userInfo:UserModel()
+	then
+		RuleEngineService.logger.info("there is no any other trunk parking record_start of time mode");
+		$adminssionRec.setInTime(handleFreeTime($adminssionRec.getInTime(),$rule.isFreeTimeFlag(),$rule.getFreeTime()));
+		double chargeCost = countPeriodTruckTimeCharge($adminssionRec.getInTime(),$adminssionRec.getOutTime(),$rule,$dctGroup,$userInfo);
+    	$re.setAmoutPay(chargeCost);
+    	RuleEngineService.logger.info("total fee:"+chargeCost);
+		RuleEngineService.logger.info("end of trunk time mode");
+end
+
+//用户是小车计时收费——昼夜模式一
+rule "user_carTimeCharge_day_night1"
+	salience 98
+	agenda-group "user_chargeRule"
+	when
+		$re:ChargeResult()
+		$adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_CAR,payFlag==false)
+		//类型是昼夜模式，且过了免费时间
+		$rule:TimeRuleModel(freeTime< TimeUtils.getDistanceMin($adminssionRec.inTime, $adminssionRec.outTime),billingModel==TimeRuleModel.BILLING_MODEL_DAY_NIGHT)
+		$dctGroup:DctRuleGroupModel()
+		$userInfo:UserModel()
+	then 
+		RuleEngineService.logger.info("there is no any other car parking record_start of day and night mode one");
+		$adminssionRec.setInTime(handleFreeTime($adminssionRec.getInTime(),$rule.isFreeTimeFlag(),$rule.getFreeTime()));
+		double chargeCost = countDayNightOneCarTimeCharge($adminssionRec.getInTime(),$adminssionRec.getOutTime(),$rule,$dctGroup,$userInfo);
+    	$re.setAmoutPay(chargeCost);
+    	RuleEngineService.logger.info("total fee:"+chargeCost);
+		RuleEngineService.logger.info("end of car day and night mode one");
+
+end
+
+//用户是大车计时收费——昼夜模式一
+rule "user_truckTimeCharge_day_night1"
+	salience 98
+	agenda-group "user_chargeRule"
+	when
+		$re:ChargeResult()
+		$adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_TRUCK,payFlag==false)
+		//类型是昼夜模式，且过了免费时间
+		$rule:TimeRuleModel(freeTime< TimeUtils.getDistanceMin($adminssionRec.inTime, $adminssionRec.outTime),billingModel==TimeRuleModel.BILLING_MODEL_DAY_NIGHT)
+		$dctGroup:DctRuleGroupModel()
+		$userInfo:UserModel()
+	then
+		RuleEngineService.logger.info("there is no any other trunk parking record_start of day and night mode one");
+		$adminssionRec.setInTime(handleFreeTime($adminssionRec.getInTime(),$rule.isFreeTimeFlag(),$rule.getFreeTime()));
+		double chargeCost = countDayNightOneTruckTimeCharge($adminssionRec.getInTime(),$adminssionRec.getOutTime(),$rule,$dctGroup,$userInfo);
+    	$re.setAmoutPay(chargeCost);
+    	RuleEngineService.logger.info("total fee:"+chargeCost);
+		RuleEngineService.logger.info("end of trunk day and night mode one");
+end
+
+//用户是小车计时收费——昼夜模式二
+rule "user_carTimeCharge_day_night2"
+	salience 98
+	agenda-group "user_chargeRule"
+	when
+		$re:ChargeResult()
+		$adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_CAR,payFlag==false)
+		//类型是北京昼夜模式，且过了免费时间
+		$rule:TimeRuleModel(freeTime< TimeUtils.getDistanceMin($adminssionRec.inTime, $adminssionRec.outTime),billingModel==TimeRuleModel.BILLING_MODEL_DAY_NIGHT2)
+		$dctGroup:DctRuleGroupModel()
+		$userInfo:UserModel()
+	then 
+		RuleEngineService.logger.info("there is no any other car parking record_start of day and night mode two");
+		$adminssionRec.setInTime(handleFreeTime($adminssionRec.getInTime(),$rule.isFreeTimeFlag(),$rule.getFreeTime()));
+		double chargeCost = countDayNightTwoCarTimeCharge($adminssionRec.getInTime(),$adminssionRec.getOutTime(),$rule,$dctGroup,$userInfo);
+    	$re.setAmoutPay(chargeCost);
+    	RuleEngineService.logger.info("total fee:"+chargeCost);
+		RuleEngineService.logger.info(new String("end of car day and night mode two".getBytes(),"utf-8"));
+
+end
+
+//用户是大车计时收费——昼夜模式二
+rule "user_truckTimeCharge_day_night2"
+	salience 98
+	agenda-group "user_chargeRule"
+	when
+		$re:ChargeResult()
+		$adminssionRec:AdmissionRecModel(carType == AdmissionRecModel.CAR_TYPE_TRUCK,payFlag==false)
+		//类型是北京昼夜模式，且过了免费时间
+		$rule:TimeRuleModel(freeTime< TimeUtils.getDistanceMin($adminssionRec.inTime, $adminssionRec.outTime),billingModel==TimeRuleModel.BILLING_MODEL_DAY_NIGHT2)
+		$dctGroup:DctRuleGroupModel()
+		$userInfo:UserModel()
+	then
+		RuleEngineService.logger.info("there is no any other car parking record_start of day and night mode two");
+		$adminssionRec.setInTime(handleFreeTime($adminssionRec.getInTime(),$rule.isFreeTimeFlag(),$rule.getFreeTime()));
+		double chargeCost = countDayNightTwoTruckTimeCharge($adminssionRec.getInTime(),$adminssionRec.getOutTime(),$rule,$dctGroup,$userInfo);
+    	$re.setAmoutPay(chargeCost);
+    	RuleEngineService.logger.info("total fee:"+chargeCost);
+		RuleEngineService.logger.info("end of trunk day and night mode two");
+end

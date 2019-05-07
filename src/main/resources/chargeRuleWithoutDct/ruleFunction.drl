@@ -1,0 +1,1305 @@
+//created on: 2015-3-31
+package com.langmy.terminal.modules.ruleEngine
+
+import com.langmy.terminal.modules.ruleEngine.chargeRule.TimeRuleModel
+import java.util.Date
+import java.util.List
+import java.util.ArrayList
+import com.langmy.terminal.common.utils.DateUtils
+import java.util.Calendar;
+import java.text.SimpleDateFormat;
+import java.text.DecimalFormat;
+import java.text.ParseException;
+function int getDistanceMin(java.util.Date inTime,java.util.Date outTime){
+	return TimeUtils.getDistanceMin(inTime,outTime);
+}
+function double doubleFormat(double num)
+{
+	DecimalFormat df= new DecimalFormat("######0.00");
+	return Double.valueOf(df.format(num));
+}
+//小车的标准模式计时收费
+/*
+	每隔一个时段进行一次跳跃，当遇到跨天或者是当天的结束时间的时候，进行一次统计，判断时候超过了每日收费上限
+*/
+function double countStandardCarTimeCharge(Date inTime,Date outTime,TimeRuleModel timeCharge){
+	int carUnitTime = timeCharge.getCarUnitTime();
+	double carUnitFee = timeCharge.getCarUnitFee();
+	//System.out.println("standard mode:car per"+carUnitTime+"minute "+carUnitFee+"yuan");
+	RuleEngineService.logger.info("standard mode:car per "+carUnitTime+" minute "+carUnitFee+" yuan ");
+	int per = getPerTimeByTimeHandle(getDistanceMin(inTime,outTime),carUnitTime,timeCharge.getTimeHandle());
+	double permoney=0.0;
+	double totalmoney=0.0;
+	outTime = DateAdd(inTime,per*carUnitTime);
+	while(inTime.before(outTime))
+	{
+		if((DateAdd(inTime,carUnitTime).getDay() == inTime.getDay())&&(DateAdd(inTime,carUnitTime).before(outTime)))
+		{
+			permoney=permoney+carUnitFee;
+			inTime=DateAdd(inTime,carUnitTime);	
+			//System.out.println("permoney:"+permoney);		
+		}
+		else {
+			if(permoney+carUnitFee>timeCharge.getDailyCharge())
+			{
+				permoney=timeCharge.getDailyCharge();
+			} else {
+				permoney=permoney+carUnitFee;
+			}
+			
+			totalmoney = totalmoney+permoney;
+			permoney = 0.0;
+			inTime=DateAdd(inTime,carUnitTime);
+		}
+	}
+//	RuleEngineService.logger.info("total:"+per+" per time,total:"+totalmoney+":yuan");
+	totalmoney = getMoneyByDecimalHandle(totalmoney,timeCharge.getDeciHandle());
+	RuleEngineService.logger.info("total:"+per+" per time,total:"+totalmoney+":yuan");
+	return totalmoney;
+}
+//大车的标准模式收费
+function double countStandardTruckTimeCharge(Date inTime,Date outTime,TimeRuleModel timeCharge){
+//	int truckUnitTime = timeCharge.getTruckUnitTime();
+//	double truckUnitFee = timeCharge.getTruckUnitFee();
+//	RuleEngineService.logger.info("standard trunk:trunk per"+truckUnitTime+"minute "+truckUnitFee+"yuan");
+//	int per = getPerTimeByTimeHandle(getDistanceMin(inTime,outTime),truckUnitTime,timeCharge.getTimeHandle());
+//	double money = getMoneyByDecimalHandle(per*truckUnitFee,timeCharge.getTimeHandle());
+//	RuleEngineService.logger.info("total"+per+"per time,total"+money+"yuan");
+//	return money;
+	int truckUnitTime = timeCharge.getTruckUnitTime();
+	double truckUnitFee = timeCharge.getTruckUnitFee();
+	//System.out.println("standard mode:car per"+carUnitTime+"minute "+carUnitFee+"yuan");
+	RuleEngineService.logger.info("standard mode:truck per "+truckUnitTime+" minute "+truckUnitFee+" yuan ");
+	int per = getPerTimeByTimeHandle(getDistanceMin(inTime,outTime),truckUnitTime,timeCharge.getTimeHandle());
+	double permoney=0.0;
+	double totalmoney=0.0;
+	outTime = DateAdd(inTime,per*truckUnitTime);
+	while(inTime.before(outTime))
+	{
+		if((DateAdd(inTime,truckUnitTime).getDay() == inTime.getDay())&&(DateAdd(inTime,truckUnitTime).before(outTime)))
+		{
+			permoney=permoney+truckUnitFee;
+			inTime=DateAdd(inTime,truckUnitTime);			
+		}
+		else {
+			if(permoney+truckUnitFee>timeCharge.getDailyCharge())
+			{
+				permoney=timeCharge.getDailyCharge();
+			} else {
+				permoney=permoney+truckUnitFee;
+			}
+			
+			totalmoney = totalmoney+permoney;
+			permoney = 0.0;
+			inTime=DateAdd(inTime,truckUnitTime);
+		}
+	}
+	
+	totalmoney = getMoneyByDecimalHandle(totalmoney,timeCharge.getDeciHandle());
+	RuleEngineService.logger.info("total:"+per+" per time,total:"+totalmoney+":yuan");
+	return totalmoney;
+}
+
+//小车的时段模式计时收费
+/*
+		第一次是用num==1进行标注，以后的计算方法和小车的计费是相同的
+*/
+function double countPeriodCarTimeCharge(Date inTime,Date outTime,TimeRuleModel timeCharge){
+//	int timeOneLen = timeCharge.getTimeOneLen();
+//	int carTimeOneUnitTime = timeCharge.getCarUnitTime(); //时段一的单位时间
+//	double carTimeOneUnitFee = timeCharge.getCarUnitFee();
+//	int carTimeTwoUnitTime = timeCharge.getNightCarUnitTime(); //时段二的单位时间
+//	double carTimeTwoUnitFee = timeCharge.getNightCarUnitFee();
+//	int timeTwoTime = getDistanceMin(inTime,outTime)-timeOneLen;
+	
+//	RuleEngineService.logger.info("time mode:car time period one per"+carTimeOneUnitTime+"minute "+carTimeOneUnitFee+"yuan"+",time period two per"+carTimeTwoUnitTime+"minute"+carTimeTwoUnitFee+"yuan");
+	
+//	int timeOnePer = getPerTimeByTimeHandle(timeOneLen,carTimeOneUnitTime,timeCharge.getTimeHandle());
+//	int timeTwoPer = getPerTimeByTimeHandle(timeTwoTime,carTimeTwoUnitTime,timeCharge.getTimeHandle());
+//	double timeOneFee = timeOnePer*carTimeOneUnitFee;
+//	double timeTwoFee = timeTwoPer*carTimeTwoUnitFee;
+//	double money = getMoneyByDecimalHandle(timeOneFee+timeTwoFee,timeCharge.getTimeHandle());
+//	RuleEngineService.logger.info("period one "+timeOneFee+"yuan,period two"+timeTwoFee+"yuan,total"+money+"yuan");
+//	return money;
+	int carTimeOneUnitTime = timeCharge.getTimeOneLen(); //时段一的单位时间
+	double carTimeOneUnitFee = timeCharge.getCarUnitFee();
+	int carTimeTwoUnitTime = timeCharge.getNightCarUnitTime(); //时段二的单位时间
+	double carTimeTwoUnitFee = timeCharge.getNightCarUnitFee();
+	RuleEngineService.logger.info("time mode:car time period one per "+carTimeOneUnitTime+" minute "+carTimeOneUnitFee+" yuan, "+",time period two per "+carTimeTwoUnitTime+" minute "+carTimeTwoUnitFee+" yuan");
+	int per=0;
+	if(DateAdd(inTime,carTimeOneUnitTime).before(outTime)){
+		 per = getPerTimeByTimeHandle(getDistanceMin(DateAdd(inTime,carTimeOneUnitTime),outTime),carTimeTwoUnitTime,timeCharge.getTimeHandle());
+	} 
+	outTime = DateAdd(inTime,per*carTimeTwoUnitTime+carTimeOneUnitTime);
+	
+	double permoney=0.0;
+	double totalmoney=0.0;
+	int num = 1;
+	for(;inTime.before(outTime);num++)
+	{
+		if(
+		( ( (DateAdd(inTime,carTimeOneUnitTime).getDay() == inTime.getDay())&&(num==1) ) && ( DateAdd(inTime,carTimeOneUnitTime).before(outTime) ) ) ||
+		( ( (DateAdd(inTime,carTimeTwoUnitTime).getDay() == inTime.getDay())&&(num!=1) ) && ( DateAdd(inTime,carTimeTwoUnitTime).before(outTime) ) )
+		)
+		{
+			if(num == 1)
+			{
+				permoney=permoney+carTimeOneUnitFee;
+				inTime=DateAdd(inTime,carTimeOneUnitTime);			
+			}	else {
+				permoney=permoney+carTimeTwoUnitFee;
+				inTime=DateAdd(inTime,carTimeTwoUnitTime);
+			}	
+			
+		}
+		else {
+			if(num == 1)
+			{
+				if(permoney+carTimeOneUnitFee>timeCharge.getDailyCharge())
+				{
+					permoney=timeCharge.getDailyCharge();
+				} else {
+					permoney=permoney+carTimeOneUnitFee;
+				}
+			} else {
+				if(permoney+carTimeTwoUnitFee>timeCharge.getDailyCharge())
+				{
+					permoney=timeCharge.getDailyCharge();
+				} else {
+					permoney=permoney+carTimeTwoUnitFee;
+				}
+			}		
+			totalmoney = totalmoney+permoney;
+			permoney = 0.0;
+			if(num == 1){
+				inTime=DateAdd(inTime,carTimeOneUnitTime);
+			} else {
+				inTime=DateAdd(inTime,carTimeTwoUnitTime);
+			}
+			
+		}
+	}
+	totalmoney = getMoneyByDecimalHandle(totalmoney,timeCharge.getDeciHandle());
+	RuleEngineService.logger.info("total:"+per+" per time,total:"+totalmoney+":yuan");
+	return totalmoney;
+}
+
+//大车的时段模式计时收费
+
+function double countPeriodTruckTimeCharge(Date inTime,Date outTime,TimeRuleModel timeCharge){
+//	int timeOneLen = timeCharge.getTimeOneLen();
+//	int truckTimeOneUnitTime = timeCharge.getTruckUnitTime();
+//	double truckTimeOneUnitFee = timeCharge.getTruckUnitFee();
+//	int truckTimeTwoUnitTime = timeCharge.getNightTruckUnitTime(); //时段二的单位时间
+//	double truckTimeTwoUnitFee = timeCharge.getNightTruckUnitFee();
+//	int timeTwoTime = getDistanceMin(inTime,outTime)-timeOneLen;
+//	RuleEngineService.logger.info("time mode:trunk period one per"+truckTimeOneUnitTime+"minute "+truckTimeOneUnitFee+"yuan"+",period two per"+truckTimeTwoUnitTime+"minute"+truckTimeTwoUnitFee+"yuan");
+	
+//	int timeOnePer = getPerTimeByTimeHandle(timeOneLen,truckTimeOneUnitTime,timeCharge.getTimeHandle());
+//	int timeTwoPer = getPerTimeByTimeHandle(timeTwoTime,truckTimeTwoUnitTime,timeCharge.getTimeHandle());
+//	double timeOneFee = timeOnePer*truckTimeOneUnitFee;
+//	double timeTwoFee = timeTwoPer*truckTimeTwoUnitFee;
+//	double money = getMoneyByDecimalHandle(timeOneFee+timeTwoFee,timeCharge.getTimeHandle());
+//	RuleEngineService.logger.info("total"+timeOneFee+timeTwoFee+"per time,total"+money+"yuan");
+//	return money;
+	int truckTimeOneUnitTime = timeCharge.getTimeOneLen(); //
+	double truckTimeOneUnitFee = timeCharge.getTruckUnitFee();
+	int truckTimeTwoUnitTime = timeCharge.getNightTruckUnitTime(); //
+	double truckTimeTwoUnitFee = timeCharge.getNightTruckUnitFee();
+	RuleEngineService.logger.info("time mode:truck time period one per "+truckTimeOneUnitTime+" minute "+truckTimeOneUnitFee+" yuan, "+",time period two per "+truckTimeTwoUnitTime+" minute "+truckTimeTwoUnitFee+" yuan");
+	int per=0;
+	if(DateAdd(inTime,truckTimeOneUnitTime).before(outTime)){
+		 per = getPerTimeByTimeHandle(getDistanceMin(DateAdd(inTime,truckTimeOneUnitTime),outTime),truckTimeTwoUnitTime,timeCharge.getTimeHandle());
+	} 
+	outTime = DateAdd(inTime,per*truckTimeTwoUnitTime+truckTimeOneUnitTime);
+	
+	double permoney=0.0;
+	double totalmoney=0.0;
+	int num = 1;
+	for(;inTime.before(outTime);num++)
+	{
+		if(
+		( ( (DateAdd(inTime,truckTimeOneUnitTime).getDay() == inTime.getDay())&&(num==1) ) && ( DateAdd(inTime,truckTimeOneUnitTime).before(outTime) ) ) ||
+		( ( (DateAdd(inTime,truckTimeTwoUnitTime).getDay() == inTime.getDay())&&(num!=1) ) && ( DateAdd(inTime,truckTimeTwoUnitTime).before(outTime) ) )
+		)
+		{
+			if(num == 1)
+			{
+				permoney=permoney+truckTimeOneUnitFee;
+				inTime=DateAdd(inTime,truckTimeOneUnitTime);			
+			}	else {
+				permoney=permoney+truckTimeTwoUnitFee;
+				inTime=DateAdd(inTime,truckTimeTwoUnitTime);
+			}	
+			
+		}
+		else {
+			if(num == 1)
+			{
+				if(permoney+truckTimeOneUnitFee>timeCharge.getDailyCharge())
+				{
+					permoney=timeCharge.getDailyCharge();
+				} else {
+					permoney=permoney+truckTimeOneUnitFee;
+				}
+			} else {
+				if(permoney+truckTimeTwoUnitFee>timeCharge.getDailyCharge())
+				{
+					permoney=timeCharge.getDailyCharge();
+				} else {
+					permoney=permoney+truckTimeTwoUnitFee;
+				}
+			}		
+			totalmoney = totalmoney+permoney;
+			permoney = 0.0;
+			if(num == 1){
+				inTime=DateAdd(inTime,truckTimeOneUnitTime);
+			} else {
+				inTime=DateAdd(inTime,truckTimeTwoUnitTime);
+			}
+			
+		}
+	}
+	totalmoney = getMoneyByDecimalHandle(totalmoney,timeCharge.getDeciHandle());
+	RuleEngineService.logger.info("total:"+per+" per time,total:"+totalmoney+":yuan");
+	return totalmoney;
+
+}
+//判断是否为昼夜交替情况，如果是的话,那么返回true，否则的话，返回false
+function boolean isDayToNight(Date inTime,int step,Date beginTime,Date endTime, int UnitTime,int nightUnitTime)
+{
+	Calendar calendar=Calendar.getInstance();
+	//计算进场时间和日期
+	calendar.setTime(inTime);	
+	int inTimeTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	
+	//计算规定的白天和黑夜时间
+	calendar.setTime(beginTime);	
+	int beginTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	
+	calendar.setTime(endTime);	
+	int endTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	
+	if(inTimeTotalMin>=beginTotalMin&&inTimeTotalMin<=endTotalMin){
+		if(step<UnitTime){
+			return true;
+		} else {
+			return false;
+		}
+	} else {
+		if(step<nightUnitTime){
+			return true;
+		} else {
+			return false;
+		}
+	}
+}
+
+function boolean isDayTimeOrNightTimeLength(Date inTime,int step,Date beginTime,Date endTime, int UnitTime,int nightUnitTime)
+{
+	Calendar calendar=Calendar.getInstance();
+	//计算进场时间和日期
+	calendar.setTime(inTime);	
+	int inTimeTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	
+	//计算规定的白天和黑夜时间
+	calendar.setTime(beginTime);	
+	int beginTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	
+	calendar.setTime(endTime);	
+	int endTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	
+	if(inTimeTotalMin>=beginTotalMin&&inTimeTotalMin<=endTotalMin){
+		if(step==UnitTime){
+			return true;
+		} else {
+			return false;
+		}
+	} else {
+		if(step==nightUnitTime){
+			return true;
+		} else {
+			return false;
+		}
+	}
+}
+//小车的昼夜模式一计时收费
+function double countDayNightOneCarTimeCharge(Date inTime,Date outTime,TimeRuleModel timeCharge){
+	int carDayTime = timeCharge.getCarUnitTime(); //时段一的单位时间
+	double carDayFee = timeCharge.getCarUnitFee();
+	int carNightTime = timeCharge.getNightCarUnitTime(); //时段二的单位时间
+	double carNightFee = timeCharge.getNightCarUnitFee();
+	Date startTime = timeCharge.getBeginDay();
+	Date endTime = timeCharge.getEndDay();
+		
+	RuleEngineService.logger.info("per carDayTime "+carDayTime+"  "+carDayFee+" yuan; per carNightTime "+carNightTime+"  "+carNightFee+" yuan");
+	RuleEngineService.logger.info("startTime:"+startTime+"  endTime:"+endTime);
+	double permoney=0.0;
+	double totalmoney=0.0;
+	//boolean flag=true;
+	int step=0;
+	//System.out.println("---inTime"+inTime);
+//	int count=0;
+	while(inTime.before(outTime)){
+	//	if(count==5)break;
+		Date  tmpInTime=inTime;
+	//	System.out.println("---inTime"+inTime);
+		
+		step=timeStep(inTime,outTime,startTime,endTime,carDayTime,carNightTime);
+	//	System.out.println("step"+step);
+		if(
+			((DateAdd(inTime,step).before(outTime))&&(!isDayToNight(inTime,step,startTime,endTime,carDayTime,carNightTime)))||
+			((DateAdd(inTime,step).before(outTime))&&(isDayToNight(inTime,step,startTime,endTime,carDayTime,carNightTime))&&(timeCharge.getTimeHandle()==TimeRuleModel.TIMEHANDLE_ROUNDING_UP))||
+			((!DateAdd(inTime,step).before(outTime))&&(isDayTimeOrNightTimeLength(inTime,step,startTime,endTime,carDayTime,carNightTime)))||
+			((!DateAdd(inTime,step).before(outTime))&&(!isDayTimeOrNightTimeLength(inTime,step,startTime,endTime,carDayTime,carNightTime))&&(timeCharge.getTimeHandle()==TimeRuleModel.TIMEHANDLE_ROUNDING_UP))
+		){
+			//如果以后有优惠规则的话，那么就在这一个if或者是else里面
+			if(isDay(inTime,startTime,endTime)){
+			//	System.out.println("inTime"+inTime);
+				permoney=permoney+carDayFee;
+				inTime=DateAdd(inTime,step);
+//				System.out.println("day");
+//				System.out.println("permoney"+permoney);
+//				System.out.println("inTime"+inTime);
+//				System.out.println();
+			}else{
+				permoney=permoney+carNightFee;
+				inTime=DateAdd(inTime,step);
+//				System.out.println("night");
+//				System.out.println("permoney"+permoney);
+//				System.out.println("inTime"+inTime);
+//				System.out.println();
+			//	System.out.println("permoney"+permoney);
+			}
+		} else{
+		//所有不收费的情况
+		inTime=DateAdd(inTime,step);
+		}
+		
+		//判断是否是一天的截止日期或者是outtime
+		if(tmpInTime.getDay() != inTime.getDay() || !inTime.before(outTime))
+		{
+			//对于收费上限的处理
+			if(permoney>timeCharge.getDailyCharge()){
+				permoney=timeCharge.getDailyCharge();
+			}
+			totalmoney = totalmoney+permoney;
+			permoney = 0.0;
+		}
+		//count++;
+	}
+	totalmoney = getMoneyByDecimalHandle(totalmoney,timeCharge.getDeciHandle());
+	RuleEngineService.logger.info("total:"+totalmoney+" yuan");
+	return totalmoney;
+/*
+	while(inTime.before(outTime) && flag==true)
+	{
+		if(
+		( ( (DateAdd(inTime,carDayTime).getDay() == inTime.getDay())&&(isDay(inTime,startTime,endTime)) ) && ( DateAdd(inTime,carDayTime).before(outTime) ) ) ||
+		( ( (DateAdd(inTime,carNightTime).getDay() == inTime.getDay())&&(!isDay(inTime,startTime,endTime)) ) && ( DateAdd(inTime,carNightTime).before(outTime) ) )
+		)
+		{
+			if(isDay(inTime,startTime,endTime))
+			{
+				//if(!((TimeHandleDN_flag(inTime,startTime,carNightTime)==true)&&(timeCharge.getTimeHandle()==TimeRuleModel.TIMEHANDLE_ABANDON))){
+					permoney=permoney+carDayFee;
+				//}
+				
+				inTime=DateAdd(inTime,carDayTime);	
+				inTime=TimeHandleDN_fun(inTime,endTime,carDayTime);		
+			}	else {
+					//if(!((TimeHandleDN_flag(inTime,startTime,carNightTime)==true)&&(timeCharge.getTimeHandle()==TimeRuleModel.TIMEHANDLE_ABANDON))){
+					permoney=permoney+carNightFee;
+				//}
+				//permoney=permoney+carNightFee;
+				inTime=DateAdd(inTime,carNightTime);
+				inTime=TimeHandleDN_fun(inTime,startTime,carNightTime);
+			}	
+			
+		}
+		else {
+			if(isDay(inTime,startTime,endTime))
+			{
+				//if((TimeHandleDN_flag(inTime,startTime,carNightTime)==true)&&(timeCharge.getTimeHandle()==TimeRuleModel.TIMEHANDLE_ABANDON)){
+					
+			//	}
+				if(permoney+carDayFee>timeCharge.getDailyCharge())
+				{
+					permoney=timeCharge.getDailyCharge();
+				} else {
+					permoney=permoney+carDayFee;
+				}
+			} else {
+				if(permoney+carNightFee>timeCharge.getDailyCharge())
+				{
+					permoney=timeCharge.getDailyCharge();
+				} else {
+					permoney=permoney+carNightFee;
+				}
+			}		
+			totalmoney = totalmoney+permoney;
+			permoney = 0.0;
+			if(isDay(inTime,startTime,endTime)){
+				inTime=DateAdd(inTime,carDayTime);
+				inTime=TimeHandleDN_fun(inTime,endTime,carDayTime);
+			} else {
+				inTime=DateAdd(inTime,carNightTime);
+				inTime=TimeHandleDN_fun(inTime,startTime,carNightTime);
+			}
+			if(timeCharge.getTimeHandle()==TimeRuleModel.TIMEHANDLE_ABANDON){
+				flag=endDNone(inTime,outTime,startTime,endTime,carDayTime,carNightTime);
+			}
+			
+		}
+		
+	}
+	
+	totalmoney = getMoneyByDecimalHandle(totalmoney,timeCharge.getDeciHandle());
+	RuleEngineService.logger.info("total:"+totalmoney+" yuan");
+	return totalmoney;
+
+//	List<Integer> times =  divideTime(inTime,outTime,timeCharge);
+//	int dayTime = times.get(0);
+//	int nightTime = times.get(1);
+//	RuleEngineService.logger.info("day and night mode one:car day per"+timeCharge.getCarUnitTime()+"minutue "+timeCharge.getCarUnitFee()+"yuan"+",car night per"+timeCharge.getNightCarUnitTime()+"minute"+timeCharge.getNightCarUnitFee()+"yuan");
+//	double countFee=getPerTimeByTimeHandle(dayTime,timeCharge.getCarUnitTime(),timeCharge.getTimeHandle())*timeCharge.getCarUnitFee()+
+//				getPerTimeByTimeHandle(nightTime,timeCharge.getNightCarUnitTime(),timeCharge.getTimeHandle())*timeCharge.getNightCarUnitFee();
+//	countFee = getMoneyByDecimalHandle(countFee,timeCharge.getDeciHandle());
+//	RuleEngineService.logger.info("day total"+dayTime+"minute,night total"+nightTime+"minute,total"+countFee+"yuan");
+//	return countFee;
+*/
+}
+
+//大车的昼夜模式一计时收费
+/*
+
+*/
+function double countDayNightOneTruckTimeCharge(Date inTime,Date outTime,TimeRuleModel timeCharge){
+int truckDayTime = timeCharge.getTruckUnitTime(); //Ê±¶ÎÒ»µÄµ¥Î»Ê±¼ä
+	double truckDayFee = timeCharge.getTruckUnitFee();
+	int truckNightTime = timeCharge.getNightTruckUnitTime(); //Ê±¶Î¶þµÄµ¥Î»Ê±¼ä
+	double truckNightFee = timeCharge.getNightTruckUnitFee();
+	Date startTime = timeCharge.getBeginDay();
+	Date endTime = timeCharge.getEndDay();
+		
+	RuleEngineService.logger.info("per truckDayTime "+truckDayTime+"  "+truckDayFee+" yuan; per truckNightTime "+truckNightTime+"  "+truckNightFee+" yuan");
+	RuleEngineService.logger.info("startTime:"+startTime+"  endTime:"+endTime);
+	double permoney=0.0;
+	double totalmoney=0.0;
+	//boolean flag=true;
+	int step=0;
+	//System.out.println("---inTime"+inTime);
+//	int count=0;
+	while(inTime.before(outTime)){
+	//	if(count==5)break;
+		Date  tmpInTime=inTime;
+	//	System.out.println("---inTime"+inTime);
+		
+		step=timeStep(inTime,outTime,startTime,endTime,truckDayTime,truckNightTime);
+	//	System.out.println("step"+step);
+		if(
+			((DateAdd(inTime,step).before(outTime))&&(!isDayToNight(inTime,step,startTime,endTime,truckDayTime,truckNightTime)))||
+			((DateAdd(inTime,step).before(outTime))&&(isDayToNight(inTime,step,startTime,endTime,truckDayTime,truckNightTime))&&(timeCharge.getTimeHandle()==TimeRuleModel.TIMEHANDLE_ROUNDING_UP))||
+			((!DateAdd(inTime,step).before(outTime))&&(isDayTimeOrNightTimeLength(inTime,step,startTime,endTime,truckDayTime,truckNightTime)))||
+			((!DateAdd(inTime,step).before(outTime))&&(!isDayTimeOrNightTimeLength(inTime,step,startTime,endTime,truckDayTime,truckNightTime))&&(timeCharge.getTimeHandle()==TimeRuleModel.TIMEHANDLE_ROUNDING_UP))
+		){
+			//Èç¹ûÒÔºóÓÐÓÅ»Ý¹æÔòµÄ»°£¬ÄÇÃ´¾ÍÔÚÕâÒ»¸öif»òÕßÊÇelseÀïÃæ
+			if(isDay(inTime,startTime,endTime)){
+			//	System.out.println("inTime"+inTime);
+				permoney=permoney+truckDayFee;
+				inTime=DateAdd(inTime,step);
+			}else{
+				permoney=permoney+truckNightFee;
+				inTime=DateAdd(inTime,step);
+			//	System.out.println("permoney"+permoney);
+			}
+		} else{
+		//ËùÓÐ²»ÊÕ·ÑµÄÇé¿ö
+		inTime=DateAdd(inTime,step);
+		}
+		
+		//ÅÐ¶ÏÊÇ·ñÊÇÒ»ÌìµÄ½ØÖ¹ÈÕÆÚ»òÕßÊÇouttime
+		if(tmpInTime.getDay() != inTime.getDay() || !inTime.before(outTime))
+		{
+			//¶ÔÓÚÊÕ·ÑÉÏÏÞµÄ´¦Àí
+			if(permoney>timeCharge.getDailyCharge()){
+				permoney=timeCharge.getDailyCharge();
+			}
+			totalmoney = totalmoney+permoney;
+			permoney = 0.0;
+		}
+		//count++;
+	}
+	totalmoney = getMoneyByDecimalHandle(totalmoney,timeCharge.getDeciHandle());
+	RuleEngineService.logger.info("total:"+totalmoney+" yuan");
+	return totalmoney;
+//	List<Integer> times =  divideTime(inTime,outTime,timeCharge);
+//	int dayTime = times.get(0);
+//	int nightTime = times.get(1);
+//	RuleEngineService.logger.info("day and night mode one:trunk day per"+timeCharge.getTruckUnitTime()+"miinute"+timeCharge.getTruckUnitFee()+"yuan"+",trunk night per"+timeCharge.getNightTruckUnitTime()+"minute"+timeCharge.getNightTruckUnitFee()+"yuan");
+//	double countFee=getPerTimeByTimeHandle(dayTime,timeCharge.getTruckUnitTime(),timeCharge.getTimeHandle())*timeCharge.getTruckUnitFee()+
+//				getPerTimeByTimeHandle(nightTime,timeCharge.getNightTruckUnitTime(),timeCharge.getTimeHandle())*timeCharge.getNightTruckUnitFee();
+//	countFee = getMoneyByDecimalHandle(countFee,timeCharge.getDeciHandle());
+//	RuleEngineService.logger.info("day total"+dayTime+"minute,night total"+nightTime+"minute,total"+countFee+"yuan");
+//	return countFee;
+/*
+int truckDayTime = timeCharge.getTruckUnitTime(); //Ê±¶ÎÒ»µÄµ¥Î»Ê±¼ä
+	double truckDayFee = timeCharge.getTruckUnitFee();
+	int truckNightTime = timeCharge.getNightTruckUnitTime(); //Ê±¶Î¶þµÄµ¥Î»Ê±¼ä
+	double truckNightFee = timeCharge.getNightTruckUnitFee();
+	Date startTime = timeCharge.getBeginDay();
+	Date endTime = timeCharge.getEndDay();
+	//outTime=getPerTimeByTimeHandleDNone(inTime,outTime,startTime,endTime,truckDayTime,truckNightTime,timeCharge.getTimeHandle());
+	
+//	System.out.println(outTime);
+//	outTime=getPerTimeByTimeHandleDNone(inTime,outTime,startTime,endTime,truckDayTime,truckNightTime,timeCharge.getTimeHandle());
+//	System.out.println(outTime);
+//	return 0.0;
+		
+	RuleEngineService.logger.info("per truckDayTime "+truckDayTime+"  "+truckDayFee+" yuan; per truckNightTime "+truckNightTime+"  "+truckNightFee+" yuan");
+	RuleEngineService.logger.info("startTime:"+startTime+"  endTime:"+endTime);
+	double permoney=0.0;
+	double totalmoney=0.0;
+	boolean flag=true;
+	while(inTime.before(outTime) && flag==true)
+	{
+		if(
+		( ( (DateAdd(inTime,truckDayTime).getDay() == inTime.getDay())&&(isDay(inTime,startTime,endTime)) ) && ( DateAdd(inTime,truckDayTime).before(outTime) ) ) ||
+		( ( (DateAdd(inTime,truckNightTime).getDay() == inTime.getDay())&&(!isDay(inTime,startTime,endTime)) ) && ( DateAdd(inTime,truckNightTime).before(outTime) ) )
+		)
+		{
+			if(isDay(inTime,startTime,endTime))
+			{
+				permoney=permoney+truckDayFee;
+				inTime=DateAdd(inTime,truckDayTime);	
+				inTime=TimeHandleDN_fun(inTime,endTime,truckDayTime);		
+			}	else {
+				permoney=permoney+truckNightFee;
+				inTime=DateAdd(inTime,truckNightTime);
+				inTime=TimeHandleDN_fun(inTime,startTime,truckNightTime);
+			}	
+			
+		}
+		else {
+			if(isDay(inTime,startTime,endTime))
+			{
+				if(permoney+truckDayFee>timeCharge.getDailyCharge())
+				{
+					permoney=timeCharge.getDailyCharge();
+				} else {
+					permoney=permoney+truckDayFee;
+				}
+			} else {
+				if(permoney+truckNightFee>timeCharge.getDailyCharge())
+				{
+					permoney=timeCharge.getDailyCharge();
+				} else {
+					permoney=permoney+truckNightFee;
+				}
+			}		
+			totalmoney = totalmoney+permoney;
+			permoney = 0.0;
+			if(isDay(inTime,startTime,endTime)){
+				inTime=DateAdd(inTime,truckDayTime);
+				inTime=TimeHandleDN_fun(inTime,endTime,truckDayTime);
+			} else {
+				inTime=DateAdd(inTime,truckNightTime);
+				inTime=TimeHandleDN_fun(inTime,startTime,truckNightTime);
+			}
+			if(timeCharge.getTimeHandle()==TimeRuleModel.TIMEHANDLE_ABANDON){
+				flag=endDNone(inTime,outTime,startTime,endTime,truckDayTime,truckNightTime);
+			}
+			
+		}
+		
+	}
+	
+	totalmoney = getMoneyByDecimalHandle(totalmoney,timeCharge.getDeciHandle());
+	RuleEngineService.logger.info("total:"+totalmoney+" yuan");
+	return totalmoney;
+	*/
+}
+/*
+	计算的方法和时段模式相类似，只是多了一个判断当前是白天还是夜晚，分别加上白天或晚上的费用，跳的话也是按照那个来跳的
+*/
+//小车的昼夜模式二计时收费
+function double countDayNightTwoCarTimeCharge(Date inTime,Date outTime,TimeRuleModel timeCharge){
+	int carDayTime = timeCharge.getCarUnitTime(); //时段一的单位时间
+	double carDayFee = timeCharge.getCarUnitFee();
+	int carNightTime = timeCharge.getNightCarUnitTime(); //时段二的单位时间
+	double carNightFee = timeCharge.getNightCarUnitFee();
+	Date startTime = timeCharge.getBeginDay();
+	Date endTime = timeCharge.getEndDay();
+	outTime=getPerTimeByTimeHandleDN(inTime,outTime,startTime,endTime,carDayTime,carNightTime,timeCharge.getTimeHandle());
+	
+		
+	RuleEngineService.logger.info("per carDayTime "+carDayTime+"  "+carDayFee+" yuan; per carNightTime "+carNightTime+"  "+carNightFee+" yuan");
+	RuleEngineService.logger.info("startTime:"+startTime+"  endTime:"+endTime);
+	double permoney=0.0;
+	double totalmoney=0.0;
+	while(inTime.before(outTime))
+	{
+		if(
+		( ( (DateAdd(inTime,carDayTime).getDay() == inTime.getDay())&&(isDay(inTime,startTime,endTime)) ) && ( DateAdd(inTime,carDayTime).before(outTime) ) ) ||
+		( ( (DateAdd(inTime,carNightTime).getDay() == inTime.getDay())&&(!isDay(inTime,startTime,endTime)) ) && ( DateAdd(inTime,carNightTime).before(outTime) ) )
+		)
+		{
+			if(isDay(inTime,startTime,endTime))
+			{
+				permoney=permoney+carDayFee;
+				inTime=DateAdd(inTime,carDayTime);			
+			}	else {
+				permoney=permoney+carNightFee;
+				inTime=DateAdd(inTime,carNightTime);
+			}	
+			
+		}
+		else {
+			if(isDay(inTime,startTime,endTime))
+			{
+				if(permoney+carDayFee>timeCharge.getDailyCharge())
+				{
+					permoney=timeCharge.getDailyCharge();
+				} else {
+					permoney=permoney+carDayFee;
+				}
+			} else {
+				if(permoney+carNightFee>timeCharge.getDailyCharge())
+				{
+					permoney=timeCharge.getDailyCharge();
+				} else {
+					permoney=permoney+carNightFee;
+				}
+			}		
+			totalmoney = totalmoney+permoney;
+			permoney = 0.0;
+			if(isDay(inTime,startTime,endTime)){
+				inTime=DateAdd(inTime,carDayTime);
+			} else {
+				inTime=DateAdd(inTime,carNightTime);
+			}
+			
+		}
+		
+	}
+	
+	totalmoney = getMoneyByDecimalHandle(totalmoney,timeCharge.getDeciHandle());
+	RuleEngineService.logger.info("total:"+totalmoney+" yuan");
+	return totalmoney;
+/*
+		RuleEngineService.logger.info("timeCharge.getDailyCharge():"+timeCharge.getDailyCharge());
+		int dayOne=Integer.valueOf(DateUtils.getDay(startTime));
+		int dayTwo=Integer.valueOf(DateUtils.getDay(endTime));
+		int hourOne=Integer.valueOf(DateUtils.getHour(startTime));
+		int hourTwo=Integer.valueOf(DateUtils.getHour(endTime));
+		int minOne=Integer.valueOf(DateUtils.getMinute(startTime));
+		int minTwo=Integer.valueOf(DateUtils.getMinute(endTime));
+		int ruleStartHour=Integer.valueOf(DateUtils.getHour(timeCharge.getBeginDay()));
+		int ruleStartMin=Integer.valueOf(DateUtils.getMinute(timeCharge.getBeginDay()));
+		int ruleEndHour=Integer.valueOf(DateUtils.getHour(timeCharge.getEndDay()));
+		int ruleEndMin=Integer.valueOf(DateUtils.getMinute(timeCharge.getEndDay()));
+		//transMinOne:停车开始时间转化成分钟（不考虑日期） transMinTwo:停车结束时间转化成分钟（不考虑日期）
+		
+		//前面一个小时是否免费的规则处理:把进入的时间后移，统一到全部收费的情况
+		minOne=minOne+timeCharge.getFreeTime();
+		
+		int transRuleStartMin=ruleStartHour*60+ruleStartMin;
+		int transRuleEndMin=ruleEndHour*60+ruleEndMin;
+		int allDayMin=24*60;
+		int dayInterval=timeCharge.getCarUnitTime();
+		int nightInterval=timeCharge.getNightCarUnitTime();
+		double dayFee=timeCharge.getCarUnitFee();
+		double nightFee=timeCharge.getNightCarUnitFee();
+		double countFee;
+		int transMinOne=hourOne*60+minOne;
+		int transMinTwo=hourTwo*60+minTwo;
+		int dayTimeCount=0;
+		int nightTimeCount=0;
+		int timeHandle = timeCharge.getTimeHandle();
+		//当天数跨越两天以后，那么必有一个完成的天数，这里是单独计算完整的天数，而完整的天数的白天的份数（30分钟每份）和晚上的份数（120分钟一份）
+		//是固定的，最后都把情况归纳到当天或者是相差一天
+		if(dayTwo-dayOne>=2){
+			dayTimeCount=(dayTwo-(dayOne+1))*(transRuleEndMin-transRuleStartMin)/dayInterval;
+			nightTimeCount=(dayTwo-(dayOne+1))*(allDayMin-(transRuleEndMin-transRuleStartMin))/nightInterval;		
+			dayOne=dayTwo-1;
+		}
+		
+		if(dayTwo-dayOne<=1){
+			transMinTwo=(dayTwo-dayOne)*allDayMin+transMinTwo;
+			//停车时间规则处理：
+			//如果是TIMEHANDLE_ROUNDING_UP，超出的时间没有到达1份，算作是1份
+			//如果是TIMEHANDLE_ABANDON，如果超出的时间没有到达1份，就会忽略掉
+			//算法描述：
+			//从开始的时间一份一份往上加（白天30分钟一份，晚上120分钟一份），直到超出结束的时间
+			if(timeHandle==TimeRuleModel.TIMEHANDLE_ROUNDING_UP){
+			do{
+				if(transMinOne % allDayMin >= transRuleStartMin && transMinOne % allDayMin < transRuleEndMin){
+					dayTimeCount++;
+					transMinOne=transMinOne+dayInterval;					
+				}
+				else{
+					nightTimeCount++;
+					transMinOne=transMinOne+nightInterval;
+				}
+			}while(transMinOne<transMinTwo);
+		}
+			else{
+				do{
+					if(transMinOne % allDayMin >= transRuleStartMin && transMinOne % allDayMin < transRuleEndMin){
+						
+						
+						if((transMinTwo-transMinOne)>=dayInterval){
+							dayTimeCount++;
+						}
+						transMinOne=transMinOne+dayInterval;
+					}
+					else{
+						
+						if((transMinTwo-transMinOne)>=nightInterval){
+							nightTimeCount++;
+						}
+						transMinOne=transMinOne+nightInterval;
+					}
+				}while(transMinOne<=transMinTwo);
+			}
+		}
+		
+		RuleEngineService.logger.info("car day total parking:"+dayTimeCount*dayInterval+"minute");
+		RuleEngineService.logger.info("car night total parking:"+nightTimeCount*nightInterval+"minute");
+		countFee=dayTimeCount*dayFee+nightTimeCount*nightFee;
+		//countFee=countFee;
+		//停车金钱规则处理
+		countFee=getMoneyByDecimalHandle(countFee,timeCharge.getDeciHandle());
+		RuleEngineService.logger.info("total:"+countFee+"yuan");
+		return countFee;
+*/
+}
+
+//大车的昼夜模式二计时收费
+function double countDayNightTwoTruckTimeCharge(Date inTime,Date outTime,TimeRuleModel timeCharge){
+int truckDayTime = timeCharge.getTruckUnitTime(); //时段一的单位时间
+	double truckDayFee = timeCharge.getTruckUnitFee();
+	int truckNightTime = timeCharge.getNightTruckUnitTime(); //时段二的单位时间
+	double truckNightFee = timeCharge.getNightTruckUnitFee();
+	Date startTime = timeCharge.getBeginDay();
+	Date endTime = timeCharge.getEndDay();
+	outTime=getPerTimeByTimeHandleDN(inTime,outTime,startTime,endTime,truckDayTime,truckNightTime,timeCharge.getTimeHandle());
+	
+		
+	RuleEngineService.logger.info("per truckDayTime "+truckDayTime+"  "+truckDayFee+" yuan; per truckNightTime "+truckNightTime+"  "+truckNightFee+" yuan");
+	RuleEngineService.logger.info("startTime:"+startTime+"  endTime:"+endTime);
+	double permoney=0.0;
+	double totalmoney=0.0;
+	while(inTime.before(outTime))
+	{
+		if(
+		( ( (DateAdd(inTime,truckDayTime).getDay() == inTime.getDay())&&(isDay(inTime,startTime,endTime)) ) && ( DateAdd(inTime,truckDayTime).before(outTime) ) ) ||
+		( ( (DateAdd(inTime,truckNightTime).getDay() == inTime.getDay())&&(!isDay(inTime,startTime,endTime)) ) && ( DateAdd(inTime,truckNightTime).before(outTime) ) )
+		)
+		{
+			if(isDay(inTime,startTime,endTime))
+			{
+				permoney=permoney+truckDayFee;
+				inTime=DateAdd(inTime,truckDayTime);			
+			}	else {
+				permoney=permoney+truckNightFee;
+				inTime=DateAdd(inTime,truckNightTime);
+			}	
+			
+		}
+		else {
+			if(isDay(inTime,startTime,endTime))
+			{
+				if(permoney+truckDayFee>timeCharge.getDailyCharge())
+				{
+					permoney=timeCharge.getDailyCharge();
+				} else {
+					permoney=permoney+truckDayFee;
+				}
+			} else {
+				if(permoney+truckNightFee>timeCharge.getDailyCharge())
+				{
+					permoney=timeCharge.getDailyCharge();
+				} else {
+					permoney=permoney+truckNightFee;
+				}
+			}		
+			totalmoney = totalmoney+permoney;
+			permoney = 0.0;
+			if(isDay(inTime,startTime,endTime)){
+				inTime=DateAdd(inTime,truckDayTime);
+			} else {
+				inTime=DateAdd(inTime,truckNightTime);
+			}
+			
+		}
+		
+	}
+	
+	totalmoney = getMoneyByDecimalHandle(totalmoney,timeCharge.getDeciHandle());
+	RuleEngineService.logger.info("total:"+totalmoney+" yuan");
+	return totalmoney;
+/*
+		int dayOne=Integer.valueOf(DateUtils.getDay(startTime));
+		int dayTwo=Integer.valueOf(DateUtils.getDay(endTime));
+		int hourOne=Integer.valueOf(DateUtils.getHour(startTime));
+		int hourTwo=Integer.valueOf(DateUtils.getHour(endTime));
+		int minOne=Integer.valueOf(DateUtils.getMinute(startTime));
+		int minTwo=Integer.valueOf(DateUtils.getMinute(endTime));
+		int ruleStartHour=Integer.valueOf(DateUtils.getHour(timeCharge.getBeginDay()));
+		int ruleStartMin=Integer.valueOf(DateUtils.getMinute(timeCharge.getBeginDay()));
+		int ruleEndHour=Integer.valueOf(DateUtils.getHour(timeCharge.getEndDay()));
+		int ruleEndMin=Integer.valueOf(DateUtils.getMinute(timeCharge.getEndDay()));
+		//transMinOne:停车开始时间转化成分钟（不考虑日期） transMinTwo:停车结束时间转化成分钟（不考虑日期）
+		
+		//前面一个小时是否免费的规则处理:把进入的时间后移，统一到全部收费的情况
+		//minOne=minOne+timeCharge.getFreeTime();
+		
+		int transRuleStartMin=ruleStartHour*60+ruleStartMin;
+		int transRuleEndMin=ruleEndHour*60+ruleEndMin;
+		int allDayMin=24*60;
+		int dayInterval=timeCharge.getTruckUnitTime();
+		int nightInterval=timeCharge.getNightTruckUnitTime();
+		double dayFee=timeCharge.getTruckUnitFee();
+		double nightFee=timeCharge.getNightTruckUnitFee();
+		double countFee;
+		int transMinOne=hourOne*60+minOne;
+		//System.out.println("hourOne:"+hourOne+"    "+minOne:"+minOne);
+		int transMinTwo=hourTwo*60+minTwo;
+		int dayTimeCount=0;
+		int nightTimeCount=0;
+		int timeHandle = timeCharge.getTimeHandle();
+		//System.out.println("timeHandle");
+		//当天数跨越两天以后，那么必有一个完成的天数，这里是单独计算完整的天数，而完整的天数的白天的份数（30分钟每份）和晚上的份数（120分钟一份）
+		//是固定的，最后都把情况归纳到当天或者是相差一天
+			//System.out.println("昼夜模式二:大车白天每"+timeCharge.getTruckUnitTime()+"分钟 "+timeCharge.getTruckUnitFee()+"人民币"+",夜晚大车每"+timeCharge.getNightTruckUnitTime()+"分钟"+timeCharge.getNightTruckUnitFee()+"人民币");
+		if(dayTwo-dayOne>=2){
+			dayTimeCount=(dayTwo-(dayOne+1))*(transRuleEndMin-transRuleStartMin)/dayInterval;
+			nightTimeCount=(dayTwo-(dayOne+1))*(allDayMin-(transRuleEndMin-transRuleStartMin))/nightInterval;		
+			dayOne=dayTwo-1;
+		}
+		
+		if(dayTwo-dayOne<=1){
+			transMinTwo=(dayTwo-dayOne)*allDayMin+transMinTwo;
+			//停车时间规则处理：
+			//如果是TIMEHANDLE_ROUNDING_UP，超出的时间没有到达1份，算作是1份
+			//如果是TIMEHANDLE_ABANDON，如果超出的时间没有到达1份，就会忽略掉
+			//算法描述：
+			//从开始的时间一份一份往上加（白天30分钟一份，晚上120分钟一份），直到超出结束的时间
+			if(timeHandle==TimeRuleModel.TIMEHANDLE_ROUNDING_UP){
+			do{
+				//System.out.println("transRuleStartMin:"+transRuleStartMin);
+				//System.out.println("transMinOne:"+transMinOne);
+				//System.out.println("hourOne:"+hourOne);
+				//System.out.println("minOne:"+minOne);
+				//System.out.println("transMinTwo:"+transMinTwo);
+				//System.out.println("allDayMin:"+allDayMin);
+				//System.out.println("transRuleEndMin:"+transRuleEndMin);
+				if(transMinOne % allDayMin >= transRuleStartMin && transMinOne % allDayMin < transRuleEndMin){
+					dayTimeCount++;
+					//System.out.println("dayTimeCount:"+dayTimeCount);
+					transMinOne=transMinOne+dayInterval;					
+				}
+				else{
+					nightTimeCount++;
+					//System.out.println("nightTimeCount:"+nightTimeCount);
+					transMinOne=transMinOne+nightInterval;
+				}
+			}while(transMinOne<transMinTwo);
+		}
+			else{
+				//System.out.println("12313");
+				do{
+					if(transMinOne % allDayMin >= transRuleStartMin && transMinOne % allDayMin < transRuleEndMin){
+						
+						
+						if((transMinTwo-transMinOne)>=dayInterval){
+							dayTimeCount++;
+						}
+						transMinOne=transMinOne+dayInterval;
+					}
+					else{
+						
+						if((transMinTwo-transMinOne)>=nightInterval){
+							nightTimeCount++;
+						}
+						transMinOne=transMinOne+nightInterval;
+					}
+				}while(transMinOne<=transMinTwo);
+			}
+		}
+		
+		RuleEngineService.logger.info("trunk day parking:"+dayTimeCount*dayInterval+"minute");
+		RuleEngineService.logger.info("trunk day parking:"+nightTimeCount*nightInterval+"minute");
+		countFee=dayTimeCount*dayFee+nightTimeCount*nightFee;
+		//countFee=countFee;
+		//停车金钱规则处理
+		countFee=getMoneyByDecimalHandle(countFee,timeCharge.getDeciHandle());
+		RuleEngineService.logger.info("total:"+countFee+"yuan");
+		return countFee;
+		*/
+}
+
+//把入场时间和出场时间，根据timeCharge中的白天黑夜划分
+function List<Integer> divideTime(Date startTime,Date endTime,TimeRuleModel timeCharge){
+		int dayOne=Integer.valueOf(DateUtils.getDay(startTime));
+		int dayTwo=Integer.valueOf(DateUtils.getDay(endTime));
+		int hourOne=Integer.valueOf(DateUtils.getHour(startTime));
+		int hourTwo=Integer.valueOf(DateUtils.getHour(endTime));
+		int minOne=Integer.valueOf(DateUtils.getMinute(startTime));
+		int minTwo=Integer.valueOf(DateUtils.getMinute(endTime));
+		int ruleStartHour=Integer.valueOf(DateUtils.getHour(timeCharge.getBeginDay()));
+		int ruleStartMin=Integer.valueOf(DateUtils.getMinute(timeCharge.getBeginDay()));
+		int ruleEndHour=Integer.valueOf(DateUtils.getHour(timeCharge.getEndDay()));
+		int ruleEndMin=Integer.valueOf(DateUtils.getMinute(timeCharge.getEndDay()));
+		//transMinOne:停车开始时间转化成分钟（不考虑日期） transMinTwo:停车结束时间转化成分钟（不考虑日期）
+		int transMinOne=hourOne*60+minOne;
+		int transMinTwo=hourTwo*60+minTwo;
+		//totalTime=dayTime+nightTime totalTime:停车总时间   dayTime:白天停车时间  nightTime:晚上停车时间
+		//transRuleStartMin:规定的白天停车开始时间（转化成分钟） transRuleEndMin:规定的白天停车结束时间（转化成分钟）
+		//例如：白天8:00--20:00 转化过来是 transRuleStartMin=8*60=480 transRuleEndMin=20*60=1200
+		//tempTimeOne、tempTimeTwo仅仅拿来保存时间计算的中间变量，无具体含义
+		//countFill:总费用
+		int totalTime=(dayTwo-dayOne)*24*60+transMinTwo-transMinOne;
+		int transRuleStartMin=ruleStartHour*60+ruleStartMin;
+		int transRuleEndMin=ruleEndHour*60+ruleEndMin;
+		int dayTime=0;
+		int nightTime=0;
+		int tempTimeOne=0;
+		int tempTimeTwo=0;
+		double countFill=0;
+		//停车时间为为当天（不跨越24:00）
+		if(dayOne==dayTwo){
+			if(transMinOne<transRuleEndMin && transMinTwo >= transRuleStartMin){
+				tempTimeTwo=(transMinTwo>=transRuleEndMin)?(transRuleEndMin-transRuleStartMin):(transMinTwo-transRuleStartMin);
+				tempTimeOne=(transMinOne>=transRuleStartMin)?(transMinOne-transRuleStartMin):0;
+				dayTime=tempTimeTwo-tempTimeOne;
+			}
+			nightTime=totalTime-dayTime;
+		//停车时间大于一天的情况
+		}else{
+			if(transMinOne<transRuleEndMin){
+				tempTimeOne=(transMinOne>=transRuleStartMin)?(transRuleEndMin-transMinOne):(transRuleEndMin-transRuleStartMin);
+			}
+			if(transMinTwo >= transRuleStartMin){
+				tempTimeTwo=(transMinTwo>=transRuleEndMin)?(transRuleEndMin-transRuleStartMin):(transMinTwo-transRuleStartMin);
+			}
+			
+			dayTime=tempTimeTwo+tempTimeOne+(dayTwo-dayOne-1)*(transRuleEndMin-transRuleStartMin);
+			nightTime=totalTime-dayTime;		
+		}
+	   List<Integer> times = new ArrayList<Integer>();
+	   times.add(dayTime);
+	   times.add(nightTime);
+	   return times;
+}
+
+/**
+* 根据decimalHandle来决定最后的金额如果有小数，那么是进一、舍、还是留着小数
+* 
+*/
+function double getMoneyByDecimalHandle(double money,int decimalHandle) {
+		//System.out.println(money);
+		//System.out.println(decimalHandle);
+		DecimalFormat df= new DecimalFormat("######0.00");
+		double m = 0.0;
+		if(decimalHandle==TimeRuleModel.DECIHANDLE_ROUNDING_UP)
+		 	m  = (money==(int)money?money:((int)money+1)); //如果有小数，那么就进一
+		else if(decimalHandle==TimeRuleModel.DECIHANDLE_ABANDON)
+			m = (int)money; //舍弃小数
+		else if(decimalHandle==TimeRuleModel.DECIHANDLE_NONE)
+			m = money; //不处理
+		return Double.valueOf(df.format(m));
+			
+}
+
+/**
+* 根据timeHandle来决定如果停车时间不足一单位时间，是进一，还是舍弃
+* 
+*/
+function int getPerTimeByTimeHandle(int minute, int perTime,int timeHandle) {
+		int per = 0;
+		if(minute%perTime==0){
+			per =  minute/perTime;
+		}
+		else{
+			if(timeHandle==TimeRuleModel.TIMEHANDLE_ROUNDING_UP)
+				per =  minute/perTime+1; 
+			else if(timeHandle==TimeRuleModel.TIMEHANDLE_ABANDON)
+				per = minute/perTime;
+		}
+		return per;
+}
+/*
+function Date TimeHandleDN_flag(Date outTime,Date time,int carTime){
+	Calendar calendarone=Calendar.getInstance();
+	Calendar calendaroneBefore=Calendar.getInstance();
+	Calendar calendartwo=Calendar.getInstance();
+	calendarone.setTime(outTime);	
+	int outTimeTotalMin = calendarone.get(Calendar.HOUR_OF_DAY)*60+calendarone.get(Calendar.MINUTE);
+	
+	calendartwo.setTime(time);
+	int timeTotalMin = calendartwo.get(Calendar.HOUR_OF_DAY)*60+calendartwo.get(Calendar.MINUTE);
+	
+	Date outTimebefore=DateAdd(outTime,-carTime);
+	calendaroneBefore.setTime(outTimebefore);
+	int outTimeBeforeTotalMin = calendaroneBefore.get(Calendar.HOUR_OF_DAY)*60+calendaroneBefore.get(Calendar.MINUTE);
+	if(outTimeTotalMin>timeTotalMin && outTimeBeforeTotalMin<timeTotalMin){
+		return true;
+		
+	} else {
+		return false;
+	}
+}*/
+function Date TimeHandleDN_fun(Date outTime,Date time,int carTime){
+	
+	Calendar calendarone=Calendar.getInstance();
+	Calendar calendaroneBefore=Calendar.getInstance();
+	Calendar calendartwo=Calendar.getInstance();
+	calendarone.setTime(outTime);	
+	int outTimeTotalMin = calendarone.get(Calendar.HOUR_OF_DAY)*60+calendarone.get(Calendar.MINUTE);
+	
+	calendartwo.setTime(time);
+	int timeTotalMin = calendartwo.get(Calendar.HOUR_OF_DAY)*60+calendartwo.get(Calendar.MINUTE);
+	
+	Date outTimebefore=DateAdd(outTime,-carTime);
+	calendaroneBefore.setTime(outTimebefore);
+	int outTimeBeforeTotalMin = calendaroneBefore.get(Calendar.HOUR_OF_DAY)*60+calendaroneBefore.get(Calendar.MINUTE);
+	if(outTimeTotalMin>timeTotalMin && outTimeBeforeTotalMin<timeTotalMin){
+		calendarone.set(Calendar.HOUR_OF_DAY,calendartwo.get(Calendar.HOUR_OF_DAY));
+		calendarone.set(Calendar.MINUTE,calendartwo.get(Calendar.MINUTE));
+		
+	}
+	return calendarone.getTime();
+}
+/*
+function Date getPerTimeByTimeHandleDNone(Date inTime,Date outTime,Date beginTime,Date endTime, int UnitTime,int nightUnitTime,int timeHandle){
+	Calendar calendar=Calendar.getInstance();
+	//计算进场时间和日期
+	calendar.setTime(inTime);	
+	int inTimeTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	int inTimeDay = calendar.get(Calendar.DAY_OF_MONTH);
+	
+	//计算进场时间加一天
+	Date inTimeAddDay = DateAdd(inTime,24*60);
+	calendar.setTime(inTime);	
+	int inTimeDayPlus = calendar.get(Calendar.DAY_OF_MONTH);
+	//计算出场时间和日期
+	calendar.setTime(outTime);	
+	int outTimeTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	int outTimeDay = calendar.get(Calendar.DAY_OF_MONTH);
+	//计算规定的白天和黑夜时间
+	calendar.setTime(beginTime);	
+	int beginTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	calendar.setTime(endTime);	
+	int endTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	//当进场和出场时同一天的时候
+	if(inTimeDay == outTimeDay){
+		//都在当天的晚上的时候
+		if( 
+		((inTimeTotalMin < beginTotalMin)&&(outTimeTotalMin < beginTotalMin))||
+		((inTimeTotalMin > beginTotalMin)&&(outTimeTotalMin > beginTotalMin))
+		 ) {
+		 	int per=getPerTimeByTimeHandle(outTimeTotalMin-inTimeTotalMin,nightUnitTime,timeHandle);
+		 	outTime = DateAdd(inTime,per*nightUnitTime);
+		 	//System.out.println("asd"+outTime);
+		 }
+		 //都在白天的情况
+		 if((inTimeTotalMin >= beginTotalMin && inTimeTotalMin <= endTotalMin)&&(outTimeTotalMin >= beginTotalMin && outTimeTotalMin <= endTotalMin)){
+		 	int per=getPerTimeByTimeHandle(outTimeTotalMin-inTimeTotalMin,UnitTime,timeHandle);
+		 	outTime = DateAdd(inTime,per*UnitTime);
+		 }
+		 //进入在晚上（前）或白天，出来在是晚上（后）
+		 if((inTimeTotalMin <= endTotalMin)&&(outTimeTotalMin > endTotalMin)){
+		 	int per=getPerTimeByTimeHandle(outTimeTotalMin-endTotalMin,nightUnitTime,timeHandle);
+		 	outTime = DateAdd(inTime,per*nightUnitTime+(endTotalMin-inTimeTotalMin));
+		 }
+		 //进入时晚上（前），出来是白天
+		 if((inTimeTotalMin < beginTotalMin)&&(outTimeTotalMin >= beginTotalMin && outTimeTotalMin <= endTotalMin)){
+		 	int per=getPerTimeByTimeHandle(outTimeTotalMin-beginTotalMin,UnitTime,timeHandle);
+		 	outTime = DateAdd(inTime,per*UnitTime+(beginTotalMin-inTimeTotalMin));
+		 }
+		 //进出场不是同一天的情况
+	} else {
+		//白天的情况
+		if(outTimeTotalMin >= beginTotalMin && outTimeTotalMin <= endTotalMin){
+			int per=(timeHandle==TimeRuleModel.TIMEHANDLE_ABANDON)?(outTimeTotalMin-beginTotalMin)/UnitTime:(outTimeTotalMin-beginTotalMin)/UnitTime+1;
+			outTime=DateAdd(outTime,per*UnitTime-(outTimeTotalMin-beginTotalMin));
+		}
+		//晚上（后）的情况
+		if(outTimeTotalMin > endTotalMin){
+			int per=(timeHandle==TimeRuleModel.TIMEHANDLE_ABANDON)?(outTimeTotalMin-endTotalMin)/nightUnitTime:(outTimeTotalMin-endTotalMin)/nightUnitTime+1;
+			outTime=DateAdd(outTime,per*nightUnitTime-(outTimeTotalMin-endTotalMin));
+		}
+		//晚上(前)的情况
+		if(outTimeTotalMin < beginTotalMin){
+			//相差一天的情况而且进入时间为晚上（后）的情况
+			if(inTimeDayPlus == outTimeDay){
+				//进入的时间为晚上后
+				if(inTimeTotalMin > endTotalMin){
+					int per=(timeHandle==TimeRuleModel.TIMEHANDLE_ABANDON)?(outTimeTotalMin+60*24-inTimeTotalMin)/nightUnitTime:(outTimeTotalMin+60*24-inTimeTotalMin)/nightUnitTime+1;
+					outTime=DateAdd(outTime,per*nightUnitTime-(outTimeTotalMin+60*24-inTimeTotalMin));
+				} else{
+					int per=(timeHandle==TimeRuleModel.TIMEHANDLE_ABANDON)?(outTimeTotalMin+60*24-endTotalMin)/nightUnitTime:(outTimeTotalMin+60*24-endTotalMin)/nightUnitTime+1;
+					outTime=DateAdd(outTime,per*nightUnitTime-(outTimeTotalMin+60*24-endTotalMin));
+				}
+			} else {
+				int per=(timeHandle==TimeRuleModel.TIMEHANDLE_ABANDON)?(outTimeTotalMin+60*24-endTotalMin)/nightUnitTime:(outTimeTotalMin+60*24-endTotalMin)/nightUnitTime+1;
+					outTime=DateAdd(outTime,per*nightUnitTime-(outTimeTotalMin+60*24-endTotalMin));
+			}
+		}
+	}
+	return outTime;
+}
+*/
+function int timeStep(Date inTime,Date outTime,Date beginTime,Date endTime, int UnitTime,int nightUnitTime)
+{
+	//System.out.println("inTime"+inTime);
+	Calendar calendar=Calendar.getInstance();
+	//计算进场时间和日期
+	calendar.setTime(inTime);	
+	int inTimeTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	//System.out.println("inTimeTotalMin"+inTimeTotalMin);
+	//计算出场时间和日期
+	calendar.setTime(outTime);	
+	int outTimeTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	int outTimeDay = calendar.get(Calendar.DAY_OF_MONTH);
+	
+	//计算规定的白天和黑夜时间
+	calendar.setTime(beginTime);	
+	int beginTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	
+	calendar.setTime(endTime);	
+	int endTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	//System.out.println("endTotalMin"+endTotalMin);
+	//判断白天的步长（结束时间、昼夜变换、白天步长之间的比较）
+	int toOutTimeLength=0;//距离结束时间的步长
+	int toEndTimeLength=0;//距离黑夜来临的步长
+	int toBeginTimeLength=0;
+	int minStep=0;
+	if(inTimeTotalMin>=beginTotalMin&&inTimeTotalMin<endTotalMin){//【注意：这边的20:00点的话，由于是白天所以判断白天到晚上的那个20:00间隔会产生死循环，间隔为0，所以20:00判断第二点的8点的间隔】
+		toOutTimeLength=getDistanceMin(inTime,outTime);
+		toEndTimeLength=endTotalMin-inTimeTotalMin;
+		//System.out.println("toEndTimeLength"+toEndTimeLength);
+		//System.out.println("inTimeTotalMin"+inTimeTotalMin);
+		minStep=minNum(toOutTimeLength,toEndTimeLength,UnitTime);
+		//System.out.println("minStep"+minStep);
+	} 
+	else {
+	//晚上分为黑夜早上和黑夜晚上
+		if(inTimeTotalMin<beginTotalMin){
+			toOutTimeLength=getDistanceMin(inTime,outTime);
+			toBeginTimeLength=beginTotalMin-inTimeTotalMin;
+			minStep=minNum(toOutTimeLength,toBeginTimeLength,nightUnitTime);
+			//System.out.println("minStep"+minStep);
+		} else {
+			toOutTimeLength=getDistanceMin(inTime,outTime);
+			toBeginTimeLength=beginTotalMin+24*60-inTimeTotalMin;
+			if(inTimeTotalMin==endTotalMin)
+			{
+				minStep=minNum(toOutTimeLength,toBeginTimeLength,UnitTime);
+			}
+			else
+			{
+				minStep=minNum(toOutTimeLength,toBeginTimeLength,nightUnitTime);
+			}
+			
+		}
+	}
+	//判断晚上的步长
+	return minStep;
+}
+function int minNum(int a,int b,int c){
+	int tempone=0,temptwo=0;
+	tempone=a<b?a:b;
+	temptwo=tempone<c?tempone:c;
+	return temptwo;
+}
+function Date getPerTimeByTimeHandleDN(Date inTime,Date outTime,Date beginTime,Date endTime, int UnitTime,int nightUnitTime,int timeHandle){
+	boolean flag = true;
+	while(inTime.before(outTime)){
+		if(isDay(inTime,beginTime,endTime)){
+			inTime=DateAdd(inTime,UnitTime);
+			flag = true;
+		} else {
+			inTime=DateAdd(inTime,nightUnitTime);
+			flag = false;
+		}
+	}
+	//等于不处理 大于的话如果是TIMEHANDLE_ROUNDING_UP，也不处理
+	if(inTime.after(outTime)){
+		if(timeHandle==TimeRuleModel.TIMEHANDLE_ABANDON){
+			if(flag){
+				inTime = DateAdd (inTime,-UnitTime);
+			} else {
+				inTime = DateAdd (inTime,-nightUnitTime);
+			}
+		}
+	}
+	return inTime;
+}
+function boolean endDNone(Date inTime,Date outTime,Date beginTime,Date endTime,int UnitTime,int nightUnitTime){
+	Calendar calendar=Calendar.getInstance();
+	//计算进场时间和日期
+	calendar.setTime(inTime);	
+	int inTimeTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+
+	//计算出场时间和日期
+	calendar.setTime(outTime);	
+	int outTimeTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	int outTimeDay = calendar.get(Calendar.DAY_OF_MONTH);
+	
+	//计算规定的白天和黑夜时间
+	calendar.setTime(beginTime);	
+	int beginTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	
+	calendar.setTime(endTime);	
+	int endTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	
+	if(inTimeTotalMin >= beginTotalMin && inTimeTotalMin <= endTotalMin){
+		inTime=DateAdd(inTime,UnitTime);
+	} else {
+		inTime=DateAdd(inTime,nightUnitTime);
+	}
+	
+	if(inTime.after(outTime)){
+		return false;
+	} else {
+		return true;
+	}
+	
+	
+}
+function Date DateAdd(Date inTime,int carUnitTime){
+	Calendar calendar=Calendar.getInstance();
+	calendar.setTime(inTime);
+	calendar.add(Calendar.MINUTE, carUnitTime);
+	Date date = calendar.getTime();
+	return date;
+}
+function boolean isDay(Date inTime,Date beginDay,Date endDay){
+	Calendar calendar=Calendar.getInstance();
+	
+	calendar.setTime(inTime);	
+	int inTimeTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	calendar.setTime(beginDay);	
+	int beginTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	calendar.setTime(endDay);	
+	int endTotalMin = calendar.get(Calendar.HOUR_OF_DAY)*60+calendar.get(Calendar.MINUTE);
+	
+	if(inTimeTotalMin>=beginTotalMin && inTimeTotalMin <=endTotalMin)
+	{
+		return true;
+	} else {
+		return false;
+	}
+}
+
+function Date handleFreeTime(Date inTime,boolean flag,int freeTime)
+{
+	if(flag==false)
+	{
+		inTime=DateAdd(inTime,freeTime);
+	}
+	return inTime;
+}

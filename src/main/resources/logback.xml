@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- configuration file for LogBack (slf4J implementation)
+See here for more details: http://gordondickens.com/wordpress/2013/03/27/sawing-through-the-java-loggers/ -->
+<configuration scan="true" scanPeriod="60 seconds">
+
+    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+        <resetJUL>true</resetJUL>
+    </contextListener>
+
+    <!-- To enable JMX Management -->
+    <jmxConfigurator/>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">  
+       <!-- 日志输出编码 -->    
+       <Encoding>UTF-8</Encoding>     
+        <layout class="ch.qos.logback.classic.PatternLayout">     
+             <!--格式化输出：%d表示日期，%thread表示线程名，%-5level：级别从左显示5个字符宽度%msg：日志消息，%n是换行符-->   
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n     
+            </pattern>     
+        </layout>     
+    </appender>
+    
+    <appender name="INFO_FileAppender" class="ch.qos.logback.core.FileAppender">  
+       <file>/logs/terminalInfo.log</file>  
+       <!-- 日志输出编码 -->    
+       <Encoding>UTF-8</Encoding>     
+       <filter class="ch.qos.logback.classic.filter.LevelFilter"> 
+	      <level>INFO</level> 
+	      <onMatch>ACCEPT</onMatch> 
+	      <onMismatch>DENY</onMismatch> 
+	    </filter>
+        <layout class="ch.qos.logback.classic.PatternLayout">     
+             <!--格式化输出：%d表示日期，%thread表示线程名，%-5level：级别从左显示5个字符宽度%msg：日志消息，%n是换行符-->   
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n     
+            </pattern>     
+        </layout>     
+    </appender>
+    
+    <appender name="ERROR_FileAppender" class="ch.qos.logback.core.FileAppender">  
+       <file>/logs/terminalError.log</file>  
+       <!-- 日志输出编码 -->    
+       <Encoding>UTF-8</Encoding>     
+       <filter class="ch.qos.logback.classic.filter.LevelFilter"> 
+	      <level>ERROR</level> 
+	      <onMatch>ACCEPT</onMatch> 
+	      <onMismatch>DENY</onMismatch> 
+	    </filter>
+        <layout class="ch.qos.logback.classic.PatternLayout">     
+             <!--格式化输出：%d表示日期，%thread表示线程名，%-5level：级别从左显示5个字符宽度%msg：日志消息，%n是换行符-->   
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n     
+            </pattern>     
+        </layout>     
+    </appender>
+    
+    <appender name="rollingAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>/logs/terminalRolling.log</file>
+		 <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>/logs/terminal-%d{yyyy-MM-dd}.log</fileNamePattern>
+			<maxHistory>30</maxHistory>
+		</rollingPolicy>
+		 <encoder><!-- 必须指定，否则不会往文件输出内容 -->
+			 <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{5} - %msg%n</pattern>
+		</encoder>
+		<append>false</append>
+		<prudent>false</prudent>
+	</appender>
+    
+    <!-- 无用日志禁用 -->
+    <logger name="org.springframework" level="ERROR" />
+    <logger name="org.hibernate.hql.internal" level="ERROR" />
+    <logger name="org.hibernate.cfg" level="ERROR" />
+    <logger name="org.hibernate.loader" level="ERROR" />
+    <logger name="org.hibernate.ejb" level="ERROR" />
+    <logger name="org.hibernate.internal" level="ERROR" />
+    <logger name="org.hibernate.validator" level="INFO" />
+    <logger name="org.hibernate.type" level="ERROR" />
+    <logger name="org.hibernate.id" level="ERROR" />
+    <logger name="org.hibernate.persister" level="ERROR" />
+    <logger name="org.apache.shiro" level="ERROR" />
+    <logger name="net.sf.ehcache" level="ERROR" />
+    <logger name="org.apache.commons" level="ERROR" />
+    <logger name="org.hibernate.engine" level="ERROR" />
+    <logger name="com.langmy.terminal.common.utils.DateConverter" level="ERROR" />
+	
+	<!--<logger name="org.hibernate" level="debug"/> -->
+   <!-- Uncomment and add your logger here:
+    <logger name="org.springframework.samples.service.service" level="debug"/> -->
+         
+    <root level="DEBUG">     
+        <appender-ref ref="STDOUT" />     
+        <appender-ref ref="FILE" />  
+        <appender-ref ref="INFO_FileAppender"/>   
+        <appender-ref ref="rollingAppender"/>   
+        <appender-ref ref="ERROR_FileAppender"/>   
+    </root> 
+</configuration>
